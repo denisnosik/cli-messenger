@@ -8,6 +8,7 @@ import (
 
 	"github.com/denisnosik/cli-messenger/internal/database"
 	"github.com/joho/godotenv"
+	_ "github.com/lib/pq"
 )
 
 type apiConfig struct {
@@ -15,7 +16,7 @@ type apiConfig struct {
 	secret string
 }
 
-func main() {
+func Run() {
 	godotenv.Load()
 
 	dbURL := os.Getenv("DB_URL")

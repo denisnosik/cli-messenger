@@ -8,6 +8,7 @@ import (
 	"github.com/denisnosik/cli-messenger/internal/auth"
 	"github.com/denisnosik/cli-messenger/internal/database"
 	"github.com/google/uuid"
+	"github.com/lib/pq"
 )
 
 type User struct {
@@ -43,7 +44,11 @@ func (cfg *apiConfig) handlerCreateUser(w http.ResponseWriter, r *http.Request) 
 		HashedPassword: hashPwd,
 	})
 	if err != nil {
-		respondWithError(w, http.StatusInternalServerError, "Cannot create user", err)
+		if pqErr, ok := err.(*pq.Error); ok && pqErr.Code == "23505" {
+			respondWithError(w, http.StatusConflict, "User already exists", err)
+			return
+		}
+		respondWithError(w, http.StatusInternalServerError, "DB error", err)
 		return
 	}
 

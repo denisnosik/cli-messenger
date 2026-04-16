@@ -13,3 +13,8 @@ INSERT INTO users (
     $2
 )
 RETURNING *;
+
+-- name: GetUserByNickname :one
+SELECT * FROM users
+WHERE nickname = $1
+LIMIT 1;
