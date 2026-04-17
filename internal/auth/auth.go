@@ -1,8 +1,6 @@
 package auth
 
 import (
-	"crypto/rand"
-	"encoding/hex"
 	"errors"
 	"net/http"
 	"strings"
@@ -13,8 +11,7 @@ import (
 	"github.com/google/uuid"
 )
 
-const RefreshTokenExp = 60 * 24 * time.Hour // 60 days
-const JWTExp = 1 * time.Hour                // 1 hour for JTW tokens
+const JWTExp = 1 * time.Hour // 1 hour for JTW tokens
 
 func HashPassword(password string) (string, error) {
 	hash, err := argon2id.CreateHash(password, argon2id.DefaultParams)
@@ -72,24 +69,4 @@ func GetBearerToken(headers http.Header) (string, error) {
 	}
 
 	return tokenStr, nil
-}
-
-func MakeRefreshToken() string {
-	key := make([]byte, 32)
-	rand.Read(key)
-
-	return hex.EncodeToString(key)
-}
-
-func GetAPIKey(headers http.Header) (string, error) {
-	if headers == nil {
-		return "", errors.New("header doesn't exist")
-	}
-	bearerAPIKey := headers.Get("Authorization")
-	apiKeyStr, _ := strings.CutPrefix(bearerAPIKey, "ApiKey ")
-	if apiKeyStr == "" {
-		return "", errors.New("key doesn't exist")
-	}
-
-	return apiKeyStr, nil
 }

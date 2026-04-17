@@ -12,12 +12,11 @@ import (
 )
 
 type User struct {
-	ID           uuid.UUID `json:"id"`
-	Nickname     string    `json:"nickname"`
-	CreatedAt    time.Time `json:"created_at"`
-	UpdatedAt    time.Time `json:"updated_at"`
-	Token        string    `json:"token"`
-	RefreshToken string    `json:"refresh_token"`
+	ID        uuid.UUID `json:"id"`
+	Nickname  string    `json:"nickname"`
+	CreatedAt time.Time `json:"created_at"`
+	UpdatedAt time.Time `json:"updated_at"`
+	Token     string    `json:"token"`
 }
 
 func (cfg *apiConfig) handlerCreateUser(w http.ResponseWriter, r *http.Request) {
@@ -60,4 +59,47 @@ func (cfg *apiConfig) handlerCreateUser(w http.ResponseWriter, r *http.Request) 
 	}
 
 	respondWithJSON(w, http.StatusCreated, user)
+}
+
+func (cfg *apiConfig) handlerLoginUser(w http.ResponseWriter, r *http.Request) {
+	type parameters struct {
+		Nickname string `json:"nickname"`
+		Password string `json:"password"`
+	}
+
+	decoder := json.NewDecoder(r.Body)
+	params := parameters{}
+	if err := decoder.Decode(&params); err != nil {
+		respondWithError(w, http.StatusInternalServerError, "Couldn't decode", err)
+		return
+	}
+
+	dbUser, err := cfg.db.GetUserByNickname(r.Context(), params.Nickname)
+	if err != nil {
+		respondWithError(w, http.StatusUnauthorized, "Incorrect nickname or password", err)
+		return
+	}
+
+	match, err := auth.CheckPasswordHash(params.Password, dbUser.HashedPassword)
+	if err != nil || !match {
+		respondWithError(w, http.StatusUnauthorized, "Incorrect nickname or password", err)
+		return
+	}
+
+	user := User{
+		ID:        dbUser.ID,
+		Nickname:  dbUser.Nickname,
+		CreatedAt: dbUser.CreatedAt,
+		UpdatedAt: dbUser.UpdatedAt,
+	}
+
+	token, err := auth.MakeJWT(user.ID, cfg.secret, auth.JWTExp)
+	if err != nil {
+		respondWithError(w, http.StatusInternalServerError, "Couldn't make JWT", err)
+		return
+	}
+
+	user.Token = token
+
+	respondWithJSON(w, http.StatusOK, user)
 }

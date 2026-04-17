@@ -15,31 +15,26 @@ type Client struct {
 	httpClient http.Client
 }
 
-type config struct {
-	client Client
+type CurrentUser struct {
+	Nickname string
+	Token    string
 }
 
-func getInput(msg string) []string {
-	if len(msg) > 0 {
-		fmt.Println(msg)
-	}
-	fmt.Print("> ")
-	scanner := bufio.NewScanner(os.Stdin)
-	scanned := scanner.Scan()
-	if !scanned {
-		return nil
-	}
-	line := scanner.Text()
-	line = strings.TrimSpace(line)
-	return strings.Fields(line)
+type config struct {
+	client      Client
+	currentUser CurrentUser
 }
+
+var scanner = bufio.NewScanner(os.Stdin)
 
 func Run() {
 	timeout := 5 * time.Second
 	client := Client{httpClient: http.Client{Timeout: timeout}}
+	currentUser := CurrentUser{}
 
 	config := &config{
-		client: client,
+		client:      client,
+		currentUser: currentUser,
 	}
 
 	for {
@@ -48,31 +43,61 @@ func Run() {
 			continue
 		}
 
-		switch input[0] {
-		case "registration":
-			for {
-				nickname := getInput("Enter nickname")
-				if len(nickname) == 0 {
-					fmt.Println("Invalid nickname")
-					continue
-				}
-
-				password := getInput("Enter password")
-				if len(password) == 0 {
-					fmt.Println("Invalid password")
-					continue
-				}
-
-				user, err := config.client.Register(nickname[0], password[0])
-				if err != nil {
-					fmt.Println("Error:", err)
-					continue
-				}
-
-				fmt.Printf("Registered as %s (id: %s)\n", user.Nickname, user.ID)
-				break
+		command := input[0]
+		switch command {
+		case "register":
+			nickname, password := getLoginDetails()
+			result, err := config.client.Register(nickname, password)
+			if err != nil {
+				fmt.Printf("Couldn't register. %v\n", err)
+				continue
 			}
 
+			fmt.Printf("Registered as %s\n", result.Nickname)
+			continue
+
+		case "login":
+			nickname, password := getLoginDetails()
+			result, err := config.client.Login(nickname, password)
+			if err != nil {
+				fmt.Printf("Couldn't login. %v\n", err)
+				continue
+			}
+
+			config.currentUser.Nickname = result.Nickname
+			config.currentUser.Token = result.Token
+
+			fmt.Printf("Login successful as %s\n", result.Nickname)
+			continue
 		}
+	}
+}
+
+func getInput(msg string) []string {
+	if len(msg) > 0 {
+		fmt.Println(msg)
+	}
+	fmt.Print("> ")
+	if !scanner.Scan() {
+		return nil
+	}
+	line := strings.TrimSpace(scanner.Text())
+	return strings.Fields(line)
+}
+
+func getLoginDetails() (string, string) {
+	for {
+		nickname := getInput("Enter nickname")
+		if len(nickname) == 0 {
+			fmt.Println("you have not entered nickname")
+			continue
+		}
+		password := getInput("Enter password")
+		if len(password) == 0 {
+			fmt.Println("you have not entered password")
+			continue
+		}
+
+		return nickname[0], password[0]
 	}
 }

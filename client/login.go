@@ -7,17 +7,18 @@ import (
 	"net/http"
 )
 
-type registerRequest struct {
+type loginRequest struct {
 	Nickname string `json:"nickname"`
 	Password string `json:"password"`
 }
 
-type registerResponse struct {
+type loginResponse struct {
 	Nickname string `json:"nickname"`
+	Token    string `json:"token"`
 }
 
-func (c *Client) Register(nickname, password string) (*registerResponse, error) {
-	body, err := json.Marshal(registerRequest{
+func (c *Client) Login(nickname, password string) (*loginResponse, error) {
+	body, err := json.Marshal(loginRequest{
 		Nickname: nickname,
 		Password: password,
 	})
@@ -25,7 +26,7 @@ func (c *Client) Register(nickname, password string) (*registerResponse, error) 
 		return nil, err
 	}
 
-	req, err := http.NewRequest("POST", baseURL+"/api/users", bytes.NewBuffer(body))
+	req, err := http.NewRequest("POST", baseURL+"/api/login", bytes.NewBuffer(body))
 	if err != nil {
 		return nil, fmt.Errorf("request failed: %w", err)
 	}
@@ -36,12 +37,12 @@ func (c *Client) Register(nickname, password string) (*registerResponse, error) 
 	}
 	defer res.Body.Close()
 
-	if res.StatusCode != http.StatusCreated {
+	if res.StatusCode != http.StatusOK {
 		return nil, fmt.Errorf("error: %s", res.Status)
 	}
 
 	decoder := json.NewDecoder(res.Body)
-	var result registerResponse
+	var result loginResponse
 	if err := decoder.Decode(&result); err != nil {
 		return nil, fmt.Errorf("decode failed: %w", err)
 	}
