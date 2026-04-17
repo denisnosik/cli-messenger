@@ -69,6 +69,22 @@ func Run() {
 
 			fmt.Printf("Login successful as %s\n", result.Nickname)
 			continue
+
+		case "chat":
+			targetNickname := getChatTargetNickname()
+			result, err := config.client.Chat(targetNickname, currentUser)
+			if err != nil {
+				fmt.Printf("Couldn't open chat. %v\n", err)
+			}
+			fmt.Printf("Star chat with id: %s\n", result.ChatID)
+
+		case "exit":
+			fmt.Println("Closing the messenger... Goodbye!")
+			os.Exit(0)
+
+		default:
+			fmt.Println("Invalid command.")
+			continue
 		}
 	}
 }
@@ -87,17 +103,29 @@ func getInput(msg string) []string {
 
 func getLoginDetails() (string, string) {
 	for {
-		nickname := getInput("Enter nickname")
+		nickname := getInput("Enter a nickname")
 		if len(nickname) == 0 {
-			fmt.Println("you have not entered nickname")
+			fmt.Println("you have not entered a nickname")
 			continue
 		}
-		password := getInput("Enter password")
+		password := getInput("Enter a password")
 		if len(password) == 0 {
-			fmt.Println("you have not entered password")
+			fmt.Println("you have not entered a password")
 			continue
 		}
 
 		return nickname[0], password[0]
+	}
+}
+
+func getChatTargetNickname() string {
+	for {
+		targetNickname := getInput("Enter a nickname")
+		if len(targetNickname) == 0 {
+			fmt.Println("you have not entered a nickname")
+			continue
+		}
+
+		return targetNickname[0]
 	}
 }

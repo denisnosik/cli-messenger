@@ -14,6 +14,7 @@ import (
 type apiConfig struct {
 	db     *database.Queries
 	secret string
+	hub    *Hub
 }
 
 func Run() {
@@ -32,6 +33,9 @@ func Run() {
 	}
 	dbQueries := database.New(dbConn)
 
+	hub := NewHub()
+	go hub.Run()
+
 	apiCfg := apiConfig{
 		db:     dbQueries,
 		secret: secret,
@@ -41,6 +45,9 @@ func Run() {
 
 	mux.HandleFunc("POST /api/users", apiCfg.handlerCreateUser)
 	mux.HandleFunc("POST /api/login", apiCfg.handlerLoginUser)
+	mux.HandleFunc("POST /api/chats", apiCfg.handlerChat)
+
+	mux.HandleFunc("GET /api/chats/{chat_id}/ws", apiCfg.handlerChatWS)
 
 	server := &http.Server{Addr: ":8080", Handler: mux}
 	server.ListenAndServe()

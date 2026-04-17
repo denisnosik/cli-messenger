@@ -5,19 +5,27 @@
 package database
 
 import (
-	"database/sql"
 	"time"
 
 	"github.com/google/uuid"
 )
 
-type RefreshToken struct {
-	Token     string
+type Chat struct {
+	ID        uuid.UUID
 	CreatedAt time.Time
-	UpdatedAt time.Time
-	UserID    uuid.UUID
-	ExpiresAt time.Time
-	RevokedAt sql.NullTime
+}
+
+type ChatMember struct {
+	ChatID uuid.UUID
+	UserID uuid.UUID
+}
+
+type Message struct {
+	ID        uuid.UUID
+	ChatID    uuid.UUID
+	SenderID  uuid.UUID
+	Content   string
+	CreatedAt time.Time
 }
 
 type User struct {
