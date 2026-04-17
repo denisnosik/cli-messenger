@@ -37,7 +37,7 @@ func (c *Client) Chat(targetNickname string, currentUser CurrentUser) (*chatResp
 	}
 	defer res.Body.Close()
 
-	if res.StatusCode != http.StatusOK || res.StatusCode != http.StatusCreated {
+	if res.StatusCode != http.StatusOK && res.StatusCode != http.StatusCreated {
 		return nil, fmt.Errorf("error: %s", res.Status)
 	}
 
