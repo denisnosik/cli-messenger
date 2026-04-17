@@ -73,11 +73,15 @@ func (cfg *apiConfig) handlerChatWS(w http.ResponseWriter, r *http.Request) {
 		}
 
 		// save to DB
-		cfg.db.CreateMessage(r.Context(), database.CreateMessageParams{
+		_, err = cfg.db.CreateMessage(r.Context(), database.CreateMessageParams{
 			ChatID:   parsedChatID,
 			SenderID: currentUserID,
 			Content:  string(msg),
 		})
+		if err != nil {
+			respondWithError(w, http.StatusInternalServerError, "Couldn't create message in DB", err)
+			return
+		}
 
 		// broadcast to everyone in the chat
 		cfg.hub.broadcast <- &Message{
@@ -85,5 +89,4 @@ func (cfg *apiConfig) handlerChatWS(w http.ResponseWriter, r *http.Request) {
 			payload: msg,
 		}
 	}
-
 }
