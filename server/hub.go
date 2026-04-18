@@ -1,66 +1,44 @@
 package server
 
-import (
-	"sync"
-
-	"github.com/google/uuid"
-	"github.com/gorilla/websocket"
-)
-
-type Client struct {
-	conn   *websocket.Conn
-	userID uuid.UUID
-	chatID uuid.UUID
-	send   chan []byte
-}
-
 type Hub struct {
-	chats      map[uuid.UUID][]*Client
+	clients    map[*Client]bool
+	broadcast  chan *Message
 	register   chan *Client
 	unregister chan *Client
-	broadcast  chan *Message
-	mu         sync.Mutex
 }
 
-type Message struct {
-	chatID  uuid.UUID
-	payload []byte
-}
-
-func NewHub() *Hub {
+func newHub() *Hub {
 	return &Hub{
-		chats:      make(map[uuid.UUID][]*Client),
+		clients:    make(map[*Client]bool),
+		broadcast:  make(chan *Message),
 		register:   make(chan *Client),
 		unregister: make(chan *Client),
-		broadcast:  make(chan *Message),
 	}
 }
 
-func (h *Hub) Run() {
+func (h *Hub) run() {
 	for {
 		select {
 		case client := <-h.register:
-			h.mu.Lock()
-			h.chats[client.chatID] = append(h.chats[client.chatID], client)
-			h.mu.Unlock()
-
+			h.clients[client] = true
 		case client := <-h.unregister:
-			h.mu.Lock()
-			clients := h.chats[client.chatID]
-			for i, c := range clients {
-				if c == client {
-					h.chats[client.chatID] = append(clients[:i], clients[i+1:]...)
-					break
+			if _, ok := h.clients[client]; ok {
+				delete(h.clients, client)
+				close(client.send)
+			}
+		case msg := <-h.broadcast:
+			for client := range h.clients {
+				if client.chatID != msg.chatID {
+					continue
+				}
+
+				select {
+				case client.send <- msg.payload:
+				default:
+					close(client.send)
+					delete(h.clients, client)
 				}
 			}
-			h.mu.Unlock()
-
-		case msg := <-h.broadcast:
-			h.mu.Lock()
-			for _, client := range h.chats[msg.chatID] {
-				client.send <- msg.payload
-			}
-			h.mu.Unlock()
 		}
 	}
 }

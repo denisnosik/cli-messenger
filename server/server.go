@@ -33,21 +33,23 @@ func Run() {
 	}
 	dbQueries := database.New(dbConn)
 
-	hub := NewHub()
-	go hub.Run()
+	hub := newHub()
+	go hub.run()
 
 	apiCfg := apiConfig{
 		db:     dbQueries,
 		secret: secret,
+		hub:    hub,
 	}
 
 	mux := http.NewServeMux()
 
 	mux.HandleFunc("POST /api/users", apiCfg.handlerCreateUser)
-	mux.HandleFunc("POST /api/login", apiCfg.handlerLoginUser)
-	mux.HandleFunc("POST /api/chats", apiCfg.handlerChat)
 
-	mux.HandleFunc("GET /api/chats/{chat_id}/ws", apiCfg.handlerChatWS)
+	mux.HandleFunc("POST /api/login", apiCfg.handlerLoginUser)
+
+	mux.HandleFunc("POST /api/chats", apiCfg.handlerChat)
+	mux.HandleFunc("GET /api/chats/ws", apiCfg.handlerChatWS)
 
 	server := &http.Server{Addr: ":8080", Handler: mux}
 	server.ListenAndServe()
