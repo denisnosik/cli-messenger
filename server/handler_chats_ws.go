@@ -2,6 +2,7 @@ package server
 
 import (
 	"context"
+	"encoding/json"
 	"log"
 	"net/http"
 	"time"
@@ -13,11 +14,12 @@ import (
 )
 
 type Client struct {
-	conn   *websocket.Conn
-	hub    *Hub
-	userID uuid.UUID
-	chatID uuid.UUID
-	send   chan []byte
+	conn     *websocket.Conn
+	hub      *Hub
+	userID   uuid.UUID
+	nickname string
+	chatID   uuid.UUID
+	send     chan []byte
 }
 
 type Message struct {
@@ -40,6 +42,11 @@ const (
 	maxMessageSize = 512
 )
 
+type wsMessage struct {
+	Nickname string `json:"nickname"`
+	Content  string `json:"content"`
+}
+
 func (cfg *apiConfig) handlerChatWS(w http.ResponseWriter, r *http.Request) {
 	chatID := r.URL.Query().Get("chat_id")
 	if chatID == "" {
@@ -54,7 +61,6 @@ func (cfg *apiConfig) handlerChatWS(w http.ResponseWriter, r *http.Request) {
 	}
 
 	token := r.URL.Query().Get("token")
-	log.Printf("Received token: %q", token)
 	if token == "" {
 		respondWithError(w, http.StatusBadRequest, "token required", nil)
 		return
@@ -72,12 +78,18 @@ func (cfg *apiConfig) handlerChatWS(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
+	user, err := cfg.db.GetUserByID(context.Background(), currentUserID)
+	if err != nil {
+		respondWithError(w, http.StatusInternalServerError, "Couldn't get user from db", err)
+	}
+
 	client := &Client{
-		conn:   conn,
-		hub:    cfg.hub,
-		userID: currentUserID,
-		chatID: parsedChatID,
-		send:   make(chan []byte, 256),
+		conn:     conn,
+		hub:      cfg.hub,
+		userID:   currentUserID,
+		nickname: user.Nickname,
+		chatID:   parsedChatID,
+		send:     make(chan []byte, 256),
 	}
 
 	cfg.hub.register <- client
@@ -147,9 +159,18 @@ func (c *Client) readFromClient(cfg *apiConfig) {
 			continue
 		}
 
+		payload, err := json.Marshal(wsMessage{
+			Nickname: c.nickname,
+			Content:  string(msg),
+		})
+		if err != nil {
+			log.Printf("Couldn't marshal: %v", err)
+			continue
+		}
+
 		c.hub.broadcast <- &Message{
 			chatID:  c.chatID,
-			payload: msg,
+			payload: payload,
 		}
 	}
 }

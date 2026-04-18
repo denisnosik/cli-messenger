@@ -22,6 +22,11 @@ type chatResponse struct {
 	ChatID uuid.UUID `json:"id"`
 }
 
+type wsMessage struct {
+	Nickname string `json:"nickname"`
+	Content  string `json:"content"`
+}
+
 func (c *Client) StartChat(targetNickname string, currentUser CurrentUser) (*chatResponse, error) {
 	body, err := json.Marshal(chatRequest{
 		TargetNickname: targetNickname,
@@ -77,7 +82,13 @@ func (c *Client) ConnectToChat(chatID uuid.UUID, token string) error {
 				fmt.Println("\nDisconnected from chat")
 				return
 			}
-			fmt.Printf("\n%s\n> ", string(msg))
+			wsMsg := wsMessage{}
+			if err := json.Unmarshal(msg, &wsMsg); err != nil {
+				fmt.Printf("\n%s\n> ", string(msg))
+				continue
+			}
+
+			fmt.Printf("\n[%s] %s\n> ", wsMsg.Nickname, wsMsg.Content)
 		}
 	}()
 

@@ -77,7 +77,6 @@ func Run() {
 				fmt.Printf("Couldn't open chat. %v\n", err)
 				continue
 			}
-			fmt.Printf("Star chat with id: %s\n", result.ChatID)
 
 			client.ConnectToChat(result.ChatID, config.currentUser.Token)
 
