@@ -72,11 +72,14 @@ func Run() {
 
 		case "chat":
 			targetNickname := getChatTargetNickname()
-			result, err := config.client.Chat(targetNickname, currentUser)
+			result, err := config.client.StartChat(targetNickname, config.currentUser)
 			if err != nil {
 				fmt.Printf("Couldn't open chat. %v\n", err)
+				continue
 			}
 			fmt.Printf("Star chat with id: %s\n", result.ChatID)
+
+			client.ConnectToChat(result.ChatID, config.currentUser.Token)
 
 		case "exit":
 			fmt.Println("Closing the messenger... Goodbye!")

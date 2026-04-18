@@ -54,6 +54,7 @@ func (cfg *apiConfig) handlerChatWS(w http.ResponseWriter, r *http.Request) {
 	}
 
 	token := r.URL.Query().Get("token")
+	log.Printf("Received token: %q", token)
 	if token == "" {
 		respondWithError(w, http.StatusBadRequest, "token required", nil)
 		return
@@ -82,7 +83,7 @@ func (cfg *apiConfig) handlerChatWS(w http.ResponseWriter, r *http.Request) {
 	cfg.hub.register <- client
 
 	go client.writeToClient()
-	go client.readFromClient(cfg, r.Context())
+	go client.readFromClient(cfg)
 }
 
 func (c *Client) writeToClient() {
@@ -117,7 +118,7 @@ func (c *Client) writeToClient() {
 	}
 }
 
-func (c *Client) readFromClient(cfg *apiConfig, ctx context.Context) {
+func (c *Client) readFromClient(cfg *apiConfig) {
 	defer func() {
 		c.hub.unregister <- c
 		c.conn.Close()
@@ -136,7 +137,7 @@ func (c *Client) readFromClient(cfg *apiConfig, ctx context.Context) {
 			break
 		}
 
-		_, err = cfg.db.CreateMessage(ctx, database.CreateMessageParams{
+		_, err = cfg.db.CreateMessage(context.Background(), database.CreateMessageParams{
 			ChatID:   c.chatID,
 			SenderID: c.userID,
 			Content:  string(msg),

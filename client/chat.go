@@ -1,12 +1,17 @@
 package client
 
 import (
+	"bufio"
 	"bytes"
 	"encoding/json"
 	"fmt"
 	"net/http"
+	"net/url"
+	"os"
+	"strings"
 
 	"github.com/google/uuid"
+	"github.com/gorilla/websocket"
 )
 
 type chatRequest struct {
@@ -17,7 +22,7 @@ type chatResponse struct {
 	ChatID uuid.UUID `json:"id"`
 }
 
-func (c *Client) Chat(targetNickname string, currentUser CurrentUser) (*chatResponse, error) {
+func (c *Client) StartChat(targetNickname string, currentUser CurrentUser) (*chatResponse, error) {
 	body, err := json.Marshal(chatRequest{
 		TargetNickname: targetNickname,
 	})
@@ -50,6 +55,66 @@ func (c *Client) Chat(targetNickname string, currentUser CurrentUser) (*chatResp
 	return &result, nil
 }
 
-func StartChat() {
+func (c *Client) ConnectToChat(chatID uuid.UUID, token string) error {
+	wsURL := fmt.Sprintf("ws://localhost:8080/api/chats/ws?chat_id=%s&token=%s", chatID, url.QueryEscape(token))
+	fmt.Println("Connecting to:", wsURL)
 
+	conn, _, err := websocket.DefaultDialer.Dial(wsURL, nil)
+	if err != nil {
+		fmt.Println("Couldn't connect to chat:", err)
+		return err
+	}
+	defer conn.Close()
+
+	done := make(chan struct{})
+	// reader for msgs
+	go func() {
+		defer close(done)
+
+		for {
+			_, msg, err := conn.ReadMessage()
+			if err != nil {
+				fmt.Println("\nDisconnected from chat")
+				return
+			}
+			fmt.Printf("\n%s\n> ", string(msg))
+		}
+	}()
+
+	fmt.Println("Connected! Type your message (or 'exit' to leave):")
+
+	// write and send
+	scanner := bufio.NewScanner(os.Stdin)
+	for {
+		select {
+		case <-done:
+			return nil
+		default:
+		}
+		fmt.Print("> ")
+		if !scanner.Scan() {
+			break
+		}
+
+		text := strings.TrimSpace(scanner.Text())
+		if text == "exit" {
+			break
+		}
+		if text == "" {
+			continue
+		}
+
+		err := conn.WriteMessage(websocket.TextMessage, []byte(text))
+		if err != nil {
+			fmt.Println("Couldn't send message:", err)
+			break
+		}
+	}
+
+	err = conn.WriteMessage(websocket.CloseMessage, []byte{})
+	if err != nil {
+		fmt.Println("Couldn't close message:", err)
+		return err
+	}
+	return nil
 }
