@@ -13,3 +13,12 @@ INSERT INTO messages (
     NOW()
 )
 RETURNING *;
+
+-- name: GetMessagesByChat :many
+SELECT messages.content, users.nickname, messages.created_at 
+FROM messages
+JOIN users ON users.id = messages.sender_id
+WHERE messages.chat_id = $1
+ORDER BY messages.created_at
+LIMIT $2;
+

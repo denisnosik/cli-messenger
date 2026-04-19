@@ -9,6 +9,7 @@ import (
 	"net/url"
 	"os"
 	"strings"
+	"time"
 
 	"github.com/google/uuid"
 	"github.com/gorilla/websocket"
@@ -23,8 +24,9 @@ type chatResponse struct {
 }
 
 type wsMessage struct {
-	Nickname string `json:"nickname"`
-	Content  string `json:"content"`
+	Nickname  string    `json:"nickname"`
+	CreatedAt time.Time `json:"created_at"`
+	Content   string    `json:"content"`
 }
 
 func (c *Client) StartChat(targetNickname string, currentUser CurrentUser) (*chatResponse, error) {
@@ -62,7 +64,6 @@ func (c *Client) StartChat(targetNickname string, currentUser CurrentUser) (*cha
 
 func (c *Client) ConnectToChat(chatID uuid.UUID, token string) error {
 	wsURL := fmt.Sprintf("ws://localhost:8080/api/chats/ws?chat_id=%s&token=%s", chatID, url.QueryEscape(token))
-	fmt.Println("Connecting to:", wsURL)
 
 	conn, _, err := websocket.DefaultDialer.Dial(wsURL, nil)
 	if err != nil {
@@ -88,7 +89,7 @@ func (c *Client) ConnectToChat(chatID uuid.UUID, token string) error {
 				continue
 			}
 
-			fmt.Printf("\n[%s] %s\n> ", wsMsg.Nickname, wsMsg.Content)
+			fmt.Printf("\n[%s]\n[%s] %s\n> ", wsMsg.CreatedAt.Format("02 Jan 15:04"), wsMsg.Nickname, wsMsg.Content)
 		}
 	}()
 
@@ -122,7 +123,7 @@ func (c *Client) ConnectToChat(chatID uuid.UUID, token string) error {
 		}
 	}
 
-	err = conn.WriteMessage(websocket.CloseMessage, []byte{})
+	err = conn.WriteMessage(websocket.CloseMessage, websocket.FormatCloseMessage(websocket.CloseNormalClosure, ""))
 	if err != nil {
 		fmt.Println("Couldn't close message:", err)
 		return err

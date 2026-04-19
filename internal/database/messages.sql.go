@@ -7,6 +7,7 @@ package database
 
 import (
 	"context"
+	"time"
 
 	"github.com/google/uuid"
 )
@@ -45,4 +46,47 @@ func (q *Queries) CreateMessage(ctx context.Context, arg CreateMessageParams) (M
 		&i.CreatedAt,
 	)
 	return i, err
+}
+
+const getMessagesByChat = `-- name: GetMessagesByChat :many
+SELECT messages.content, users.nickname, messages.created_at 
+FROM messages
+JOIN users ON users.id = messages.sender_id
+WHERE messages.chat_id = $1
+ORDER BY messages.created_at
+LIMIT $2
+`
+
+type GetMessagesByChatParams struct {
+	ChatID uuid.UUID
+	Limit  int32
+}
+
+type GetMessagesByChatRow struct {
+	Content   string
+	Nickname  string
+	CreatedAt time.Time
+}
+
+func (q *Queries) GetMessagesByChat(ctx context.Context, arg GetMessagesByChatParams) ([]GetMessagesByChatRow, error) {
+	rows, err := q.db.QueryContext(ctx, getMessagesByChat, arg.ChatID, arg.Limit)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	var items []GetMessagesByChatRow
+	for rows.Next() {
+		var i GetMessagesByChatRow
+		if err := rows.Scan(&i.Content, &i.Nickname, &i.CreatedAt); err != nil {
+			return nil, err
+		}
+		items = append(items, i)
+	}
+	if err := rows.Close(); err != nil {
+		return nil, err
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
 }

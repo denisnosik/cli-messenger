@@ -43,8 +43,9 @@ const (
 )
 
 type wsMessage struct {
-	Nickname string `json:"nickname"`
-	Content  string `json:"content"`
+	Nickname  string    `json:"nickname"`
+	CreatedAt time.Time `json:"created_at"`
+	Content   string    `json:"content"`
 }
 
 func (cfg *apiConfig) handlerChatWS(w http.ResponseWriter, r *http.Request) {
@@ -81,6 +82,7 @@ func (cfg *apiConfig) handlerChatWS(w http.ResponseWriter, r *http.Request) {
 	user, err := cfg.db.GetUserByID(context.Background(), currentUserID)
 	if err != nil {
 		respondWithError(w, http.StatusInternalServerError, "Couldn't get user from db", err)
+		return
 	}
 
 	client := &Client{
@@ -93,6 +95,28 @@ func (cfg *apiConfig) handlerChatWS(w http.ResponseWriter, r *http.Request) {
 	}
 
 	cfg.hub.register <- client
+
+	messages, err := cfg.db.GetMessagesByChat(context.Background(), database.GetMessagesByChatParams{
+		ChatID: parsedChatID,
+		Limit:  20, // last 20 msgs
+	})
+	if err != nil {
+		respondWithError(w, http.StatusInternalServerError, "Couldn't get messages from db", err)
+		return
+	}
+
+	if len(messages) > 0 {
+		for _, msg := range messages {
+			payload, _ := json.Marshal(wsMessage{
+				Nickname:  msg.Nickname,
+				CreatedAt: msg.CreatedAt,
+				Content:   msg.Content,
+			})
+			client.send <- payload
+		}
+
+		client.send <- []byte("----- new messages -----")
+	}
 
 	go client.writeToClient()
 	go client.readFromClient(cfg)
@@ -143,13 +167,18 @@ func (c *Client) readFromClient(cfg *apiConfig) {
 	for {
 		_, msg, err := c.conn.ReadMessage()
 		if err != nil {
-			if websocket.IsUnexpectedCloseError(err, websocket.CloseGoingAway, websocket.CloseAbnormalClosure) {
+			if websocket.IsUnexpectedCloseError(
+				err,
+				websocket.CloseGoingAway,
+				websocket.CloseAbnormalClosure,
+				websocket.CloseNormalClosure,
+			) {
 				log.Printf("error: %v", err)
 			}
 			break
 		}
 
-		_, err = cfg.db.CreateMessage(context.Background(), database.CreateMessageParams{
+		dbMsg, err := cfg.db.CreateMessage(context.Background(), database.CreateMessageParams{
 			ChatID:   c.chatID,
 			SenderID: c.userID,
 			Content:  string(msg),
@@ -160,8 +189,9 @@ func (c *Client) readFromClient(cfg *apiConfig) {
 		}
 
 		payload, err := json.Marshal(wsMessage{
-			Nickname: c.nickname,
-			Content:  string(msg),
+			Nickname:  c.nickname,
+			CreatedAt: dbMsg.CreatedAt,
+			Content:   string(msg),
 		})
 		if err != nil {
 			log.Printf("Couldn't marshal: %v", err)
