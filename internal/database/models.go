@@ -26,6 +26,7 @@ type Message struct {
 	SenderID  uuid.UUID
 	Content   string
 	CreatedAt time.Time
+	IsRead    bool
 }
 
 type User struct {

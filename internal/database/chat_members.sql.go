@@ -33,3 +33,20 @@ func (q *Queries) CreateChatMember(ctx context.Context, arg CreateChatMemberPara
 	err := row.Scan(&i.ChatID, &i.UserID)
 	return i, err
 }
+
+const getChatMember = `-- name: GetChatMember :one
+SELECT chat_id, user_id FROM chat_members
+WHERE chat_id = $1 AND user_id = $2
+`
+
+type GetChatMemberParams struct {
+	ChatID uuid.UUID
+	UserID uuid.UUID
+}
+
+func (q *Queries) GetChatMember(ctx context.Context, arg GetChatMemberParams) (ChatMember, error) {
+	row := q.db.QueryRowContext(ctx, getChatMember, arg.ChatID, arg.UserID)
+	var i ChatMember
+	err := row.Scan(&i.ChatID, &i.UserID)
+	return i, err
+}

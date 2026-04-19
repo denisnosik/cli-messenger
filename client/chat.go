@@ -9,6 +9,7 @@ import (
 	"net/url"
 	"os"
 	"strings"
+	"sync"
 	"time"
 
 	"github.com/google/uuid"
@@ -73,9 +74,15 @@ func (c *Client) ConnectToChat(chatID uuid.UUID, token string) error {
 	defer conn.Close()
 
 	done := make(chan struct{})
+	closeOnce := sync.Once{}
+
+	closeDone := func() {
+		closeOnce.Do(func() { close(done) })
+	}
+
 	// reader for msgs
 	go func() {
-		defer close(done)
+		defer closeDone()
 
 		for {
 			_, msg, err := conn.ReadMessage()
@@ -95,7 +102,21 @@ func (c *Client) ConnectToChat(chatID uuid.UUID, token string) error {
 
 	fmt.Println("Connected! Type your message (or 'exit' to leave):")
 
-	// write and send
+	// throttle markAsRead
+	go func() {
+		ticker := time.NewTicker(2 * time.Second)
+		defer ticker.Stop()
+		for {
+			select {
+			case <-ticker.C:
+				c.markAsRead(chatID, token)
+			case <-done:
+				return
+			}
+		}
+	}()
+
+	// main write and send
 	scanner := bufio.NewScanner(os.Stdin)
 	for {
 		select {
@@ -110,6 +131,7 @@ func (c *Client) ConnectToChat(chatID uuid.UUID, token string) error {
 
 		text := strings.TrimSpace(scanner.Text())
 		if text == "exit" {
+			closeDone()
 			break
 		}
 		if text == "" {
@@ -128,5 +150,26 @@ func (c *Client) ConnectToChat(chatID uuid.UUID, token string) error {
 		fmt.Println("Couldn't close message:", err)
 		return err
 	}
+	return nil
+}
+
+func (c *Client) markAsRead(chatID uuid.UUID, token string) error {
+	url := fmt.Sprintf("%s/api/chats/%s/read", baseURL, chatID)
+	req, err := http.NewRequest("POST", url, nil)
+	if err != nil {
+		return fmt.Errorf("request failed: %w", err)
+	}
+
+	req.Header.Set("Authorization", "Bearer "+token)
+	res, err := c.httpClient.Do(req)
+	if err != nil {
+		return fmt.Errorf("request failed: %w", err)
+	}
+	defer res.Body.Close()
+
+	if res.StatusCode != http.StatusNoContent {
+		return fmt.Errorf("error: %s", res.Status)
+	}
+
 	return nil
 }

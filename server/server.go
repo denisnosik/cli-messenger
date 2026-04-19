@@ -51,6 +51,8 @@ func Run() {
 	mux.HandleFunc("POST /api/chats", apiCfg.handlerChat)
 	mux.HandleFunc("GET /api/chats/ws", apiCfg.handlerChatWS)
 
+	mux.HandleFunc("POST /api/chats/{chat_id}/read", apiCfg.handlerMarkAsRead)
+
 	server := &http.Server{Addr: ":8080", Handler: mux}
 	server.ListenAndServe()
 }

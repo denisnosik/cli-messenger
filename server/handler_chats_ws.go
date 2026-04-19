@@ -23,8 +23,9 @@ type Client struct {
 }
 
 type Message struct {
-	chatID  uuid.UUID
-	payload []byte
+	chatID   uuid.UUID
+	senderID uuid.UUID
+	payload  []byte
 }
 
 var upgrader = websocket.Upgrader{
@@ -57,7 +58,7 @@ func (cfg *apiConfig) handlerChatWS(w http.ResponseWriter, r *http.Request) {
 
 	parsedChatID, err := uuid.Parse(chatID)
 	if err != nil {
-		respondWithError(w, http.StatusInternalServerError, "Couldn't parse chat id", err)
+		respondWithError(w, http.StatusBadRequest, "invalid chat_id", err)
 		return
 	}
 
@@ -102,6 +103,15 @@ func (cfg *apiConfig) handlerChatWS(w http.ResponseWriter, r *http.Request) {
 	})
 	if err != nil {
 		respondWithError(w, http.StatusInternalServerError, "Couldn't get messages from db", err)
+		return
+	}
+
+	err = cfg.db.MarkMessagesAsRead(context.Background(), database.MarkMessagesAsReadParams{
+		ChatID:   parsedChatID,
+		SenderID: currentUserID,
+	})
+	if err != nil {
+		respondWithError(w, http.StatusInternalServerError, "Couldn't mark messages as read from db", err)
 		return
 	}
 
@@ -199,8 +209,9 @@ func (c *Client) readFromClient(cfg *apiConfig) {
 		}
 
 		c.hub.broadcast <- &Message{
-			chatID:  c.chatID,
-			payload: payload,
+			chatID:   c.chatID,
+			senderID: c.userID,
+			payload:  payload,
 		}
 	}
 }

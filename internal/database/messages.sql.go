@@ -26,7 +26,7 @@ INSERT INTO messages (
     $3,
     NOW()
 )
-RETURNING id, chat_id, sender_id, content, created_at
+RETURNING id, chat_id, sender_id, content, created_at, is_read
 `
 
 type CreateMessageParams struct {
@@ -44,6 +44,7 @@ func (q *Queries) CreateMessage(ctx context.Context, arg CreateMessageParams) (M
 		&i.SenderID,
 		&i.Content,
 		&i.CreatedAt,
+		&i.IsRead,
 	)
 	return i, err
 }
@@ -89,4 +90,58 @@ func (q *Queries) GetMessagesByChat(ctx context.Context, arg GetMessagesByChatPa
 		return nil, err
 	}
 	return items, nil
+}
+
+const getUnreadMessages = `-- name: GetUnreadMessages :many
+SELECT users.nickname, COUNT(*) as count
+FROM messages
+JOIN chats ON chats.id = messages.chat_id
+JOIN chat_members ON chat_members.chat_id = chats.id AND chat_members.user_id = $1
+JOIN users ON users.id = messages.sender_id
+WHERE messages.is_read = FALSE AND messages.sender_id != $1
+GROUP BY users.nickname
+`
+
+type GetUnreadMessagesRow struct {
+	Nickname string
+	Count    int64
+}
+
+func (q *Queries) GetUnreadMessages(ctx context.Context, userID uuid.UUID) ([]GetUnreadMessagesRow, error) {
+	rows, err := q.db.QueryContext(ctx, getUnreadMessages, userID)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	var items []GetUnreadMessagesRow
+	for rows.Next() {
+		var i GetUnreadMessagesRow
+		if err := rows.Scan(&i.Nickname, &i.Count); err != nil {
+			return nil, err
+		}
+		items = append(items, i)
+	}
+	if err := rows.Close(); err != nil {
+		return nil, err
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
+}
+
+const markMessagesAsRead = `-- name: MarkMessagesAsRead :exec
+UPDATE messages
+SET is_read = TRUE
+WHERE chat_id = $1 AND sender_id != $2 AND is_read = FALSE
+`
+
+type MarkMessagesAsReadParams struct {
+	ChatID   uuid.UUID
+	SenderID uuid.UUID
+}
+
+func (q *Queries) MarkMessagesAsRead(ctx context.Context, arg MarkMessagesAsReadParams) error {
+	_, err := q.db.ExecContext(ctx, markMessagesAsRead, arg.ChatID, arg.SenderID)
+	return err
 }
