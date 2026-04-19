@@ -91,6 +91,32 @@ func Run() {
 
 			client.ConnectToChat(result.ChatID, config.currentUser.Token)
 
+		case "friends":
+			if len(input) < 2 {
+				fmt.Println("Use command + nickname")
+				continue
+			}
+			targetNickname := input[1]
+			result, err := config.client.handlerFriends(targetNickname, config.currentUser)
+			if err != nil {
+				fmt.Println(err)
+				continue
+			}
+			switch result.Status {
+			case "created":
+				fmt.Printf("Friend request successfully sent to %s.\n", targetNickname)
+				continue
+			case "accepted":
+				fmt.Printf("You have successfully added %s as a friend.\n", targetNickname)
+				continue
+			case "sent":
+				fmt.Printf("Friend request to %s already sent.\n", targetNickname)
+				continue
+			case "friends":
+				fmt.Printf("You and %s are already friends.\n", targetNickname)
+				continue
+			}
+
 		case "exit":
 			fmt.Println("Closing the messenger... Goodbye!")
 			os.Exit(0)

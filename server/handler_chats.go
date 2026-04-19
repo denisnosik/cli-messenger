@@ -40,7 +40,7 @@ func (cfg *apiConfig) handlerChat(w http.ResponseWriter, r *http.Request) {
 
 	targetUser, err := cfg.db.GetUserByNickname(r.Context(), params.TargetNickname)
 	if err != nil {
-		respondWithError(w, http.StatusNotFound, "user doesn't exist", err)
+		respondWithError(w, http.StatusNotFound, "user doesn't exist", nil)
 		return
 	}
 

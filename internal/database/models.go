@@ -20,6 +20,12 @@ type ChatMember struct {
 	UserID uuid.UUID
 }
 
+type Friend struct {
+	UserID        uuid.UUID
+	FriendID      uuid.UUID
+	RequestStatus string
+}
+
 type Message struct {
 	ID        uuid.UUID
 	ChatID    uuid.UUID
