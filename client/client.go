@@ -68,6 +68,17 @@ func Run() {
 			config.currentUser.Token = result.Token
 
 			fmt.Printf("Login successful as %s\n", result.Nickname)
+
+			notifications, err := config.client.GetNotifications(config.currentUser.Token)
+			if err != nil {
+				fmt.Printf("Couldn't get notifications. %v\n", err)
+				continue
+			}
+			if len(notifications) > 0 {
+				for _, n := range notifications {
+					fmt.Printf("You have %d unread messages from %s\n", n.Count, n.Nickname)
+				}
+			}
 			continue
 
 		case "chat":

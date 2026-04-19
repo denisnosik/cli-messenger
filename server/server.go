@@ -53,6 +53,8 @@ func Run() {
 
 	mux.HandleFunc("POST /api/chats/{chat_id}/read", apiCfg.handlerMarkAsRead)
 
+	mux.HandleFunc("GET /api/notifications", apiCfg.handlerNotifications)
+
 	server := &http.Server{Addr: ":8080", Handler: mux}
 	server.ListenAndServe()
 }

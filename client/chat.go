@@ -100,7 +100,7 @@ func (c *Client) ConnectToChat(chatID uuid.UUID, token string) error {
 		}
 	}()
 
-	fmt.Println("Connected! Type your message (or 'exit' to leave):")
+	fmt.Println("Connected! Type your message (or '/exit' to leave):")
 
 	// throttle markAsRead
 	go func() {
@@ -130,7 +130,7 @@ func (c *Client) ConnectToChat(chatID uuid.UUID, token string) error {
 		}
 
 		text := strings.TrimSpace(scanner.Text())
-		if text == "exit" {
+		if text == "/exit" {
 			closeDone()
 			break
 		}
