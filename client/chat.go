@@ -28,7 +28,7 @@ type wsMessage struct {
 	Content   string    `json:"content"`
 }
 
-func (c *Client) StartChat(targetNickname string, currentUser CurrentUser) (*chatResponse, error) {
+func (c *Client) StartChat(targetNickname string, token string) (*chatResponse, error) {
 	body, err := json.Marshal(chatRequest{
 		TargetNickname: targetNickname,
 	})
@@ -40,7 +40,7 @@ func (c *Client) StartChat(targetNickname string, currentUser CurrentUser) (*cha
 	if err != nil {
 		return nil, fmt.Errorf("request failed: %w", err)
 	}
-	req.Header.Set("Authorization", "Bearer "+currentUser.Token)
+	req.Header.Set("Authorization", "Bearer "+token)
 
 	res, err := c.httpClient.Do(req)
 	if err != nil {

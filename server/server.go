@@ -58,6 +58,9 @@ func Run() {
 	mux.HandleFunc("POST /api/friends", apiCfg.handlerFriends)
 	mux.HandleFunc("GET /api/friends", apiCfg.handlerGetFriends)
 
+	mux.HandleFunc("POST /api/online", apiCfg.handlerSetOnline)
+	mux.HandleFunc("POST /api/offline", apiCfg.handlerSetOffline)
+
 	server := &http.Server{Addr: ":8080", Handler: mux}
 	server.ListenAndServe()
 }

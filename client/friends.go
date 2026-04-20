@@ -16,10 +16,11 @@ type friendsResponse struct {
 }
 
 type allFriendsResponse struct {
-	Friends []string `json:"friends"`
+	Nickname string `json:"nickname"`
+	Online   bool   `json:"online"`
 }
 
-func (c *Client) handlerFriends(targetNickname string, currentUser CurrentUser) (*friendsResponse, error) {
+func (c *Client) handlerFriends(targetNickname string, token string) (*friendsResponse, error) {
 	body, err := json.Marshal(friendsRequest{
 		TargetNickname: targetNickname,
 	})
@@ -31,7 +32,7 @@ func (c *Client) handlerFriends(targetNickname string, currentUser CurrentUser) 
 	if err != nil {
 		return nil, fmt.Errorf("request failed: %w", err)
 	}
-	req.Header.Set("Authorization", "Bearer "+currentUser.Token)
+	req.Header.Set("Authorization", "Bearer "+token)
 
 	res, err := c.httpClient.Do(req)
 	if err != nil {
@@ -52,12 +53,12 @@ func (c *Client) handlerFriends(targetNickname string, currentUser CurrentUser) 
 	return &result, nil
 }
 
-func (c *Client) handlerGetFriends(currentUser CurrentUser) (*allFriendsResponse, error) {
+func (c *Client) handlerGetFriends(token string) ([]allFriendsResponse, error) {
 	req, err := http.NewRequest("GET", baseURL+"/api/friends", nil)
 	if err != nil {
 		return nil, fmt.Errorf("request failed: %w", err)
 	}
-	req.Header.Set("Authorization", "Bearer "+currentUser.Token)
+	req.Header.Set("Authorization", "Bearer "+token)
 
 	res, err := c.httpClient.Do(req)
 	if err != nil {
@@ -74,10 +75,10 @@ func (c *Client) handlerGetFriends(currentUser CurrentUser) (*allFriendsResponse
 	}
 
 	decoder := json.NewDecoder(res.Body)
-	var result allFriendsResponse
+	var result []allFriendsResponse
 	if err := decoder.Decode(&result); err != nil {
 		return nil, fmt.Errorf("decode failed: %w", err)
 	}
 
-	return &result, nil
+	return result, nil
 }

@@ -5,7 +5,9 @@ import (
 	"fmt"
 	"net/http"
 	"os"
+	"os/signal"
 	"strings"
+	"syscall"
 	"time"
 )
 
@@ -32,10 +34,20 @@ func Run() {
 	client := Client{httpClient: http.Client{Timeout: timeout}}
 	currentUser := CurrentUser{}
 
-	config := &config{
+	cfg := &config{
 		client:      client,
 		currentUser: currentUser,
 	}
+
+	c := make(chan os.Signal, 1)
+	signal.Notify(c, os.Interrupt, syscall.SIGTERM)
+	go func() {
+		<-c
+		if cfg.currentUser.Token != "" {
+			cfg.client.SetOffline(cfg.currentUser.Token)
+		}
+		os.Exit(0)
+	}()
 
 	// repl
 	for {
@@ -48,7 +60,7 @@ func Run() {
 		switch command {
 		case "register":
 			nickname, password := getLoginDetails()
-			result, err := config.client.Register(nickname, password)
+			result, err := cfg.client.Register(nickname, password)
 			if err != nil {
 				fmt.Printf("Couldn't register. %v\n", err)
 				continue
@@ -59,29 +71,35 @@ func Run() {
 
 		case "login":
 			nickname, password := getLoginDetails()
-			result, err := config.client.Login(nickname, password)
+			result, err := cfg.client.Login(nickname, password)
 			if err != nil {
 				fmt.Printf("Couldn't login. %v\n", err)
 				continue
 			}
 
-			config.currentUser.Nickname = result.Nickname
-			config.currentUser.Token = result.Token
+			cfg.currentUser.Nickname = result.Nickname
+			cfg.currentUser.Token = result.Token
+
+			err = cfg.client.SetOnline(cfg.currentUser.Token)
+			if err != nil {
+				fmt.Println(err)
+				continue
+			}
 
 			fmt.Printf("Login successful as %s\n", result.Nickname)
 
-			displayNotifications(config)
+			displayNotifications(cfg)
 			continue
 
 		case "chat":
 			targetNickname := getChatTargetNickname()
-			result, err := config.client.StartChat(targetNickname, config.currentUser)
+			result, err := cfg.client.StartChat(targetNickname, cfg.currentUser.Token)
 			if err != nil {
 				fmt.Printf("Couldn't open chat. %v\n", err)
 				continue
 			}
 
-			client.ConnectToChat(result.ChatID, config.currentUser.Token)
+			client.ConnectToChat(result.ChatID, cfg.currentUser.Token)
 
 		case "friends":
 			if len(input) < 2 {
@@ -90,12 +108,12 @@ func Run() {
 			}
 
 			if input[1] == "--list" {
-				displayFriends(config)
+				displayFriends(cfg)
 				continue
 			}
 
 			targetNickname := input[1]
-			result, err := config.client.handlerFriends(targetNickname, config.currentUser)
+			result, err := cfg.client.handlerFriends(targetNickname, cfg.currentUser.Token)
 			if err != nil {
 				fmt.Println(err)
 				continue
@@ -117,11 +135,14 @@ func Run() {
 			}
 
 		case "notifications":
-			displayNotifications(config)
+			displayNotifications(cfg)
 			continue
 
 		case "exit":
 			fmt.Println("Closing the messenger... Goodbye!")
+			if cfg.currentUser.Token != "" {
+				cfg.client.SetOffline(cfg.currentUser.Token)
+			}
 			os.Exit(0)
 
 		default:
@@ -161,7 +182,7 @@ func displayNotifications(cfg *config) {
 }
 
 func displayFriends(cfg *config) {
-	allFriends, err := cfg.client.handlerGetFriends(cfg.currentUser)
+	friends, err := cfg.client.handlerGetFriends(cfg.currentUser.Token)
 	if err != nil {
 		fmt.Println(err)
 		return
@@ -169,8 +190,12 @@ func displayFriends(cfg *config) {
 	fmt.Println()
 	fmt.Println("Your friends:")
 	count := 1
-	for _, f := range allFriends.Friends {
-		fmt.Printf("%d.%s\n", count, f)
+	for _, f := range friends {
+		status := "offline"
+		if f.Online {
+			status = "online"
+		}
+		fmt.Printf("%d.%s [%s]\n", count, f.Nickname, status)
 		count += 1
 	}
 	fmt.Println("------------")

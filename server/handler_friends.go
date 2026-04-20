@@ -131,10 +131,19 @@ func (cfg *apiConfig) handlerGetFriends(w http.ResponseWriter, r *http.Request) 
 		return
 	}
 
-	allFriends := AllFriends{}
-	for _, f := range friends {
-		allFriends.Friends = append(allFriends.Friends, f)
+	type friendWithStatus struct {
+		Nickname string `json:"nickname"`
+		Online   bool   `json:"online"`
 	}
 
-	respondWithJSON(w, http.StatusOK, allFriends)
+	var friendsWithStatus []friendWithStatus
+	for _, f := range friends {
+		online := cfg.hub.IsOnline(f.FriendID)
+		friendsWithStatus = append(friendsWithStatus, friendWithStatus{
+			Nickname: f.FriendNickname,
+			Online:   online,
+		})
+	}
+
+	respondWithJSON(w, http.StatusOK, friendsWithStatus)
 }
