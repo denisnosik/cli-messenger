@@ -33,7 +33,7 @@ func (c *Client) Login(nickname, password string) (*loginResponse, error) {
 
 	res, err := c.httpClient.Do(req)
 	if err != nil {
-		return nil, fmt.Errorf("request failed: %w", err)
+		return nil, fmt.Errorf("server is unavailable")
 	}
 	defer res.Body.Close()
 

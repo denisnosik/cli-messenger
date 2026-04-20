@@ -13,6 +13,10 @@ type FriendshipStatus struct {
 	Status string `json:"friendship_status"`
 }
 
+type AllFriends struct {
+	Friends []string `json:"friends"`
+}
+
 func (cfg *apiConfig) handlerFriends(w http.ResponseWriter, r *http.Request) {
 	type parameters struct {
 		TargetNickname string `json:"target_nickname"`
@@ -42,9 +46,10 @@ func (cfg *apiConfig) handlerFriends(w http.ResponseWriter, r *http.Request) {
 		respondWithError(w, http.StatusNotFound, "User doesn't exist", nil)
 		return
 	} else if err != nil {
-		respondWithError(w, http.StatusInternalServerError, "Couldn't get user from db", nil)
+		respondWithError(w, http.StatusInternalServerError, "Couldn't get user", nil)
 		return
 	}
+
 	if targetUser.ID == currentUserID {
 		respondWithError(w, http.StatusBadRequest, "Can't send friend request to yourself", nil)
 		return
@@ -100,4 +105,36 @@ func (cfg *apiConfig) handlerFriends(w http.ResponseWriter, r *http.Request) {
 		respondWithJSON(w, http.StatusOK, FriendshipStatus{Status: "friends"})
 		return
 	}
+}
+
+func (cfg *apiConfig) handlerGetFriends(w http.ResponseWriter, r *http.Request) {
+	token, err := auth.GetBearerToken(r.Header)
+	if err != nil {
+		respondWithError(w, http.StatusUnauthorized, "Couldn't get JWT", err)
+		return
+	}
+
+	currentUserID, err := auth.ValidateJWT(token, cfg.secret)
+	if err != nil {
+		respondWithError(w, http.StatusUnauthorized, "Couldn't validate JWT", err)
+		return
+	}
+
+	friends, err := cfg.db.GetAllFriendsForUser(r.Context(), currentUserID)
+	if err != nil {
+		respondWithError(w, http.StatusInternalServerError, "Couldn't get friends", nil)
+		return
+	}
+
+	if len(friends) == 0 {
+		respondWithError(w, http.StatusNotFound, "You have no friends", nil)
+		return
+	}
+
+	allFriends := AllFriends{}
+	for _, f := range friends {
+		allFriends.Friends = append(allFriends.Friends, f)
+	}
+
+	respondWithJSON(w, http.StatusOK, allFriends)
 }

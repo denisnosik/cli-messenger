@@ -42,3 +42,9 @@ JOIN users AS sender ON sender.id = friends.user_id
 JOIN users AS receiver ON receiver.id = friends.friend_id
 WHERE (friends.user_id = $1 OR friends.friend_id = $1)
 AND friends.request_status = 'pending';
+
+-- name: GetAllFriendsForUser :many
+Select friend.nickname AS friend_nickname
+FROM friends
+JOIN users AS friend ON friend.id = friends.friend_id
+WHERE friends.user_id = $1 AND friends.request_status = 'accepted';

@@ -30,7 +30,7 @@ func (c *Client) GetNotifications(token string) (notificationsResponse, error) {
 
 	res, err := c.httpClient.Do(req)
 	if err != nil {
-		return notificationsResponse{}, fmt.Errorf("request failed: %w", err)
+		return notificationsResponse{}, fmt.Errorf("server is unavailable")
 	}
 	defer res.Body.Close()
 

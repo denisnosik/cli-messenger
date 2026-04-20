@@ -87,6 +87,36 @@ func (q *Queries) DeleteFriendRequest(ctx context.Context, arg DeleteFriendReque
 	return err
 }
 
+const getAllFriendsForUser = `-- name: GetAllFriendsForUser :many
+Select friend.nickname AS friend_nickname
+FROM friends
+JOIN users AS friend ON friend.id = friends.friend_id
+WHERE friends.user_id = $1 AND friends.request_status = 'accepted'
+`
+
+func (q *Queries) GetAllFriendsForUser(ctx context.Context, userID uuid.UUID) ([]string, error) {
+	rows, err := q.db.QueryContext(ctx, getAllFriendsForUser, userID)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	var items []string
+	for rows.Next() {
+		var friend_nickname string
+		if err := rows.Scan(&friend_nickname); err != nil {
+			return nil, err
+		}
+		items = append(items, friend_nickname)
+	}
+	if err := rows.Close(); err != nil {
+		return nil, err
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
+}
+
 const getFriendRequestsForUser = `-- name: GetFriendRequestsForUser :many
 SELECT sender.nickname AS sender_nickname,
     receiver.nickname AS receiver_nickname

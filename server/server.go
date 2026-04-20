@@ -56,6 +56,7 @@ func Run() {
 	mux.HandleFunc("GET /api/notifications", apiCfg.handlerNotifications)
 
 	mux.HandleFunc("POST /api/friends", apiCfg.handlerFriends)
+	mux.HandleFunc("GET /api/friends", apiCfg.handlerGetFriends)
 
 	server := &http.Server{Addr: ":8080", Handler: mux}
 	server.ListenAndServe()

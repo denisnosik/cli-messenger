@@ -1,13 +1,11 @@
 package client
 
 import (
-	"bufio"
 	"bytes"
 	"encoding/json"
 	"fmt"
 	"net/http"
 	"net/url"
-	"os"
 	"strings"
 	"sync"
 	"time"
@@ -46,7 +44,7 @@ func (c *Client) StartChat(targetNickname string, currentUser CurrentUser) (*cha
 
 	res, err := c.httpClient.Do(req)
 	if err != nil {
-		return nil, fmt.Errorf("request failed: %w", err)
+		return nil, fmt.Errorf("server is unavailable")
 	}
 	defer res.Body.Close()
 
@@ -121,7 +119,6 @@ func (c *Client) ConnectToChat(chatID uuid.UUID, token string) error {
 	}()
 
 	// main write and send
-	scanner := bufio.NewScanner(os.Stdin)
 	for {
 		select {
 		case <-done:

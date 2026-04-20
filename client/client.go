@@ -70,26 +70,7 @@ func Run() {
 
 			fmt.Printf("Login successful as %s\n", result.Nickname)
 
-			notifications, err := config.client.GetNotifications(config.currentUser.Token)
-			if err != nil {
-				fmt.Printf("Couldn't get notifications. %v\n", err)
-				continue
-			}
-			if len(notifications.UnreadMessages) > 0 {
-				for _, msg := range notifications.UnreadMessages {
-					fmt.Printf("You have %d unread messages from %s\n", msg.Count, msg.Nickname)
-				}
-			}
-
-			if len(notifications.FriendRequests) > 0 {
-				for _, f := range notifications.FriendRequests {
-					if f.SenderNickname == config.currentUser.Nickname {
-						fmt.Printf("Friend request to %s is pending\n", f.ReceiverNickname)
-					} else {
-						fmt.Printf("Friend request from %s\n", f.SenderNickname)
-					}
-				}
-			}
+			displayNotifications(config)
 			continue
 
 		case "chat":
@@ -104,15 +85,22 @@ func Run() {
 
 		case "friends":
 			if len(input) < 2 {
-				fmt.Println("Use command + nickname")
+				fmt.Println("Use command + nickname or command + --list")
 				continue
 			}
+
+			if input[1] == "--list" {
+				displayFriends(config)
+				continue
+			}
+
 			targetNickname := input[1]
 			result, err := config.client.handlerFriends(targetNickname, config.currentUser)
 			if err != nil {
 				fmt.Println(err)
 				continue
 			}
+
 			switch result.Status {
 			case "created":
 				fmt.Printf("Friend request successfully sent to %s.\n", targetNickname)
@@ -128,6 +116,10 @@ func Run() {
 				continue
 			}
 
+		case "notifications":
+			displayNotifications(config)
+			continue
+
 		case "exit":
 			fmt.Println("Closing the messenger... Goodbye!")
 			os.Exit(0)
@@ -139,15 +131,63 @@ func Run() {
 	}
 }
 
+func displayNotifications(cfg *config) {
+	notifications, err := cfg.client.GetNotifications(cfg.currentUser.Token)
+	if err != nil {
+		fmt.Printf("Couldn't get notifications. %v\n", err)
+		return
+	}
+
+	if len(notifications.UnreadMessages) == 0 && len(notifications.FriendRequests) == 0 {
+		fmt.Println("You have no notifications")
+		return
+	}
+
+	if len(notifications.UnreadMessages) > 0 {
+		for _, msg := range notifications.UnreadMessages {
+			fmt.Printf("You have %d unread messages from %s\n", msg.Count, msg.Nickname)
+		}
+	}
+
+	if len(notifications.FriendRequests) > 0 {
+		for _, f := range notifications.FriendRequests {
+			if f.SenderNickname == cfg.currentUser.Nickname {
+				fmt.Printf("Friend request to %s is pending\n", f.ReceiverNickname)
+			} else {
+				fmt.Printf("Friend request from %s\n", f.SenderNickname)
+			}
+		}
+	}
+}
+
+func displayFriends(cfg *config) {
+	allFriends, err := cfg.client.handlerGetFriends(cfg.currentUser)
+	if err != nil {
+		fmt.Println(err)
+		return
+	}
+	fmt.Println()
+	fmt.Println("Your friends:")
+	count := 1
+	for _, f := range allFriends.Friends {
+		fmt.Printf("%d.%s\n", count, f)
+		count += 1
+	}
+	fmt.Println("------------")
+	fmt.Println()
+}
+
 func getInput(msg string) []string {
 	if len(msg) > 0 {
 		fmt.Println(msg)
 	}
 	fmt.Print("> ")
-	if !scanner.Scan() {
+	scanned := scanner.Scan()
+	if !scanned {
 		return nil
 	}
-	line := strings.TrimSpace(scanner.Text())
+	line := scanner.Text()
+	line = strings.TrimSpace(line)
 	return strings.Fields(line)
 }
 
