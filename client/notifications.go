@@ -6,28 +6,38 @@ import (
 	"net/http"
 )
 
-type notificationResponse struct {
+type notificationsResponse struct {
+	UnreadMessages []unreadMessages `json:"unread_messages"`
+	FriendRequests []friendRequest  `json:"friend_requests"`
+}
+
+type unreadMessages struct {
 	Nickname string `json:"Nickname"`
 	Count    int64  `json:"Count"`
 }
 
-func (c *Client) GetNotifications(token string) ([]notificationResponse, error) {
+type friendRequest struct {
+	SenderNickname   string `json:"sender_nickname"`
+	ReceiverNickname string `json:"receiver_nickname"`
+}
+
+func (c *Client) GetNotifications(token string) (notificationsResponse, error) {
 	req, err := http.NewRequest("GET", baseURL+"/api/notifications", nil)
 	if err != nil {
-		return nil, fmt.Errorf("request failed: %w", err)
+		return notificationsResponse{}, fmt.Errorf("request failed: %w", err)
 	}
 	req.Header.Set("Authorization", "Bearer "+token)
 
 	res, err := c.httpClient.Do(req)
 	if err != nil {
-		return nil, fmt.Errorf("request failed: %w", err)
+		return notificationsResponse{}, fmt.Errorf("request failed: %w", err)
 	}
 	defer res.Body.Close()
 
 	decoder := json.NewDecoder(res.Body)
-	var notifications []notificationResponse
+	var notifications notificationsResponse
 	if err := decoder.Decode(&notifications); err != nil {
-		return nil, fmt.Errorf("decode failed: %w", err)
+		return notificationsResponse{}, fmt.Errorf("decode failed: %w", err)
 	}
 
 	return notifications, nil

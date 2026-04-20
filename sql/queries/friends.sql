@@ -33,3 +33,12 @@ SELECT user_id, request_status FROM friends
 WHERE (user_id = $1 AND friend_id = $2)
     OR (user_id = $2 AND friend_id = $1)
 LIMIT 1;
+
+-- name: GetFriendRequestsForUser :many
+SELECT sender.nickname AS sender_nickname,
+    receiver.nickname AS receiver_nickname
+FROM friends
+JOIN users AS sender ON sender.id = friends.user_id
+JOIN users AS receiver ON receiver.id = friends.friend_id
+WHERE (friends.user_id = $1 OR friends.friend_id = $1)
+AND friends.request_status = 'pending';

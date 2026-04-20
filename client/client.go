@@ -74,9 +74,19 @@ func Run() {
 				fmt.Printf("Couldn't get notifications. %v\n", err)
 				continue
 			}
-			if len(notifications) > 0 {
-				for _, n := range notifications {
-					fmt.Printf("You have %d unread messages from %s\n", n.Count, n.Nickname)
+			if len(notifications.UnreadMessages) > 0 {
+				for _, msg := range notifications.UnreadMessages {
+					fmt.Printf("You have %d unread messages from %s\n", msg.Count, msg.Nickname)
+				}
+			}
+
+			if len(notifications.FriendRequests) > 0 {
+				for _, f := range notifications.FriendRequests {
+					if f.SenderNickname == config.currentUser.Nickname {
+						fmt.Printf("Friend request to %s is pending\n", f.ReceiverNickname)
+					} else {
+						fmt.Printf("Friend request from %s\n", f.SenderNickname)
+					}
 				}
 			}
 			continue
