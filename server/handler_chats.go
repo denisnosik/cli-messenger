@@ -39,13 +39,33 @@ func (cfg *apiConfig) handlerChat(w http.ResponseWriter, r *http.Request) {
 	}
 
 	targetUser, err := cfg.db.GetUserByNickname(r.Context(), params.TargetNickname)
-	if err != nil {
+	if err == sql.ErrNoRows {
 		respondWithError(w, http.StatusNotFound, "user doesn't exist", nil)
+		return
+	} else if err != nil {
+		respondWithError(w, http.StatusInternalServerError, "Couldn't get user", nil)
 		return
 	}
 
 	if targetUser.ID == currentUserID {
 		respondWithError(w, http.StatusBadRequest, "Can't create chat with yourself", nil)
+		return
+	}
+
+	friendshipStatus, err := cfg.db.GetFriendshipStatus(r.Context(), database.GetFriendshipStatusParams{
+		UserID:   currentUserID,
+		FriendID: targetUser.ID,
+	})
+	if err == sql.ErrNoRows {
+		respondWithError(w, http.StatusBadRequest, "You must be friends to open a chat", nil)
+		return
+	} else if err != nil {
+		respondWithError(w, http.StatusInternalServerError, "Couldn't get friendship status", nil)
+		return
+	}
+
+	if friendshipStatus.RequestStatus == "pending" {
+		respondWithError(w, http.StatusBadRequest, "Friend request pending, please accept or wait for it to be accepted", nil)
 		return
 	}
 

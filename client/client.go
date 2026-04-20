@@ -37,6 +37,7 @@ func Run() {
 		currentUser: currentUser,
 	}
 
+	// repl
 	for {
 		input := getInput("Enter command")
 		if len(input) == 0 {
