@@ -103,12 +103,30 @@ func Run() {
 
 		case "friends":
 			if len(input) < 2 {
-				fmt.Println("Use command + nickname or command + --list")
+				fmt.Println("Use command friends with")
+				fmt.Println("friends nickname")
+				fmt.Println("friends --list")
+				fmt.Println("friends --delete nickname")
 				continue
 			}
 
-			if input[1] == "--list" {
+			switch input[1] {
+			case "--list":
 				displayFriends(cfg)
+				continue
+
+			case "--delete":
+				if len(input) < 3 {
+					fmt.Println("Use friends --delete nickname")
+					continue
+				}
+				targetName := input[2]
+				err := cfg.client.DeleteFriendship(targetName, cfg.currentUser.Token)
+				if err != nil {
+					fmt.Println(err)
+					continue
+				}
+				fmt.Printf("You have successfully removed %s from your friends list.\n", targetName)
 				continue
 			}
 

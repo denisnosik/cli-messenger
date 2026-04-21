@@ -24,9 +24,10 @@ INSERT INTO friends (
     'accepted'
 );
 
--- name: DeleteFriendRequest :exec
+-- name: DeleteFriendship :exec
 DELETE FROM friends
-WHERE user_id = $1 AND friend_id = $2;
+WHERE (user_id = $1 AND friend_id = $2)
+   OR (user_id = $2 AND friend_id = $1);
 
 -- name: GetFriendshipStatus :one
 SELECT user_id, request_status FROM friends

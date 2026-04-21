@@ -72,18 +72,19 @@ func (q *Queries) CreateFriendship(ctx context.Context, arg CreateFriendshipPara
 	return err
 }
 
-const deleteFriendRequest = `-- name: DeleteFriendRequest :exec
+const deleteFriendship = `-- name: DeleteFriendship :exec
 DELETE FROM friends
-WHERE user_id = $1 AND friend_id = $2
+WHERE (user_id = $1 AND friend_id = $2)
+   OR (user_id = $2 AND friend_id = $1)
 `
 
-type DeleteFriendRequestParams struct {
+type DeleteFriendshipParams struct {
 	UserID   uuid.UUID
 	FriendID uuid.UUID
 }
 
-func (q *Queries) DeleteFriendRequest(ctx context.Context, arg DeleteFriendRequestParams) error {
-	_, err := q.db.ExecContext(ctx, deleteFriendRequest, arg.UserID, arg.FriendID)
+func (q *Queries) DeleteFriendship(ctx context.Context, arg DeleteFriendshipParams) error {
+	_, err := q.db.ExecContext(ctx, deleteFriendship, arg.UserID, arg.FriendID)
 	return err
 }
 

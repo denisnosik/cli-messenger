@@ -82,3 +82,34 @@ func (c *Client) handlerGetFriends(token string) ([]allFriendsResponse, error) {
 
 	return result, nil
 }
+
+func (c *Client) DeleteFriendship(targetNickname string, token string) error {
+	body, err := json.Marshal(friendsRequest{
+		TargetNickname: targetNickname,
+	})
+	if err != nil {
+		return err
+	}
+
+	req, err := http.NewRequest("DELETE", baseURL+"/api/friends", bytes.NewBuffer(body))
+	if err != nil {
+		return fmt.Errorf("request failed: %w", err)
+	}
+	req.Header.Set("Authorization", "Bearer "+token)
+
+	res, err := c.httpClient.Do(req)
+	if err != nil {
+		return fmt.Errorf("request failed: %w", err)
+	}
+	defer res.Body.Close()
+
+	if res.StatusCode != http.StatusNoContent {
+		var errResponse struct {
+			Error string `json:"error"`
+		}
+		json.NewDecoder(res.Body).Decode(&errResponse)
+		return fmt.Errorf("%s", errResponse.Error)
+	}
+
+	return nil
+}

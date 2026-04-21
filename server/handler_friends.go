@@ -147,3 +147,65 @@ func (cfg *apiConfig) handlerGetFriends(w http.ResponseWriter, r *http.Request) 
 
 	respondWithJSON(w, http.StatusOK, friendsWithStatus)
 }
+
+func (cfg *apiConfig) handlerDeleteFriend(w http.ResponseWriter, r *http.Request) {
+	type parameters struct {
+		TargetNickname string `json:"target_nickname"`
+	}
+
+	token, err := auth.GetBearerToken(r.Header)
+	if err != nil {
+		respondWithError(w, http.StatusUnauthorized, "Couldn't get JWT", err)
+		return
+	}
+
+	currentUserID, err := auth.ValidateJWT(token, cfg.secret)
+	if err != nil {
+		respondWithError(w, http.StatusUnauthorized, "Couldn't validate JWT", err)
+		return
+	}
+
+	decoder := json.NewDecoder(r.Body)
+	params := parameters{}
+	if err := decoder.Decode(&params); err != nil {
+		respondWithError(w, http.StatusInternalServerError, "Couldn't decode", err)
+		return
+	}
+
+	targetUser, err := cfg.db.GetUserByNickname(r.Context(), params.TargetNickname)
+	if err == sql.ErrNoRows {
+		respondWithError(w, http.StatusNotFound, "User doesn't exist", nil)
+		return
+	} else if err != nil {
+		respondWithError(w, http.StatusInternalServerError, "Couldn't get user", nil)
+		return
+	}
+
+	if targetUser.ID == currentUserID {
+		respondWithError(w, http.StatusBadRequest, "You can't use your nickname", nil)
+		return
+	}
+
+	friendshipStatus, err := cfg.db.GetFriendshipStatus(r.Context(), database.GetFriendshipStatusParams{
+		UserID:   currentUserID,
+		FriendID: targetUser.ID,
+	})
+	if err == sql.ErrNoRows || friendshipStatus.RequestStatus == "pending" {
+		respondWithError(w, http.StatusNotFound, "You are not friends", nil)
+		return
+	} else if err != nil {
+		respondWithError(w, http.StatusInternalServerError, "Couldn't get friendship status", nil)
+		return
+	}
+
+	err = cfg.db.DeleteFriendship(r.Context(), database.DeleteFriendshipParams{
+		UserID:   currentUserID,
+		FriendID: targetUser.ID,
+	})
+	if err != nil {
+		respondWithError(w, http.StatusInternalServerError, "Couldn't delete friendship", nil)
+		return
+	}
+
+	w.WriteHeader(http.StatusNoContent)
+}
