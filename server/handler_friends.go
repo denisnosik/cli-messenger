@@ -5,8 +5,8 @@ import (
 	"encoding/json"
 	"net/http"
 
-	"github.com/denisnosik/cli-messenger/internal/auth"
 	"github.com/denisnosik/cli-messenger/internal/database"
+	"github.com/google/uuid"
 )
 
 type FriendshipStatus struct {
@@ -22,22 +22,12 @@ func (cfg *apiConfig) handlerFriends(w http.ResponseWriter, r *http.Request) {
 		TargetNickname string `json:"target_nickname"`
 	}
 
-	token, err := auth.GetBearerToken(r.Header)
-	if err != nil {
-		respondWithError(w, http.StatusUnauthorized, "Couldn't get JWT", err)
-		return
-	}
-
-	currentUserID, err := auth.ValidateJWT(token, cfg.secret)
-	if err != nil {
-		respondWithError(w, http.StatusUnauthorized, "Couldn't validate JWT", err)
-		return
-	}
+	currentUserID := r.Context().Value("currentUserID").(uuid.UUID)
 
 	decoder := json.NewDecoder(r.Body)
 	params := parameters{}
 	if err := decoder.Decode(&params); err != nil {
-		respondWithError(w, http.StatusInternalServerError, "Couldn't decode", err)
+		respondWithError(w, http.StatusInternalServerError, "Couldn't decode", nil)
 		return
 	}
 
@@ -108,17 +98,7 @@ func (cfg *apiConfig) handlerFriends(w http.ResponseWriter, r *http.Request) {
 }
 
 func (cfg *apiConfig) handlerGetFriends(w http.ResponseWriter, r *http.Request) {
-	token, err := auth.GetBearerToken(r.Header)
-	if err != nil {
-		respondWithError(w, http.StatusUnauthorized, "Couldn't get JWT", err)
-		return
-	}
-
-	currentUserID, err := auth.ValidateJWT(token, cfg.secret)
-	if err != nil {
-		respondWithError(w, http.StatusUnauthorized, "Couldn't validate JWT", err)
-		return
-	}
+	currentUserID := r.Context().Value("currentUserID").(uuid.UUID)
 
 	friends, err := cfg.db.GetAllFriendsForUser(r.Context(), currentUserID)
 	if err != nil {
@@ -153,17 +133,7 @@ func (cfg *apiConfig) handlerDeleteFriend(w http.ResponseWriter, r *http.Request
 		TargetNickname string `json:"target_nickname"`
 	}
 
-	token, err := auth.GetBearerToken(r.Header)
-	if err != nil {
-		respondWithError(w, http.StatusUnauthorized, "Couldn't get JWT", err)
-		return
-	}
-
-	currentUserID, err := auth.ValidateJWT(token, cfg.secret)
-	if err != nil {
-		respondWithError(w, http.StatusUnauthorized, "Couldn't validate JWT", err)
-		return
-	}
+	currentUserID := r.Context().Value("currentUserID").(uuid.UUID)
 
 	decoder := json.NewDecoder(r.Body)
 	params := parameters{}

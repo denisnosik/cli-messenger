@@ -3,38 +3,18 @@ package server
 import (
 	"net/http"
 
-	"github.com/denisnosik/cli-messenger/internal/auth"
+	"github.com/google/uuid"
 )
 
 func (cfg *apiConfig) handlerSetOnline(w http.ResponseWriter, r *http.Request) {
-	token, err := auth.GetBearerToken(r.Header)
-	if err != nil {
-		respondWithError(w, http.StatusUnauthorized, "Couldn't get JWT", err)
-		return
-	}
-
-	currentUserID, err := auth.ValidateJWT(token, cfg.secret)
-	if err != nil {
-		respondWithError(w, http.StatusUnauthorized, "Couldn't validate JWT", err)
-		return
-	}
+	currentUserID := r.Context().Value("currentUserID").(uuid.UUID)
 
 	cfg.hub.SetOnline(currentUserID)
 	w.WriteHeader(http.StatusNoContent)
 }
 
 func (cfg *apiConfig) handlerSetOffline(w http.ResponseWriter, r *http.Request) {
-	token, err := auth.GetBearerToken(r.Header)
-	if err != nil {
-		respondWithError(w, http.StatusUnauthorized, "Couldn't get JWT", err)
-		return
-	}
-
-	currentUserID, err := auth.ValidateJWT(token, cfg.secret)
-	if err != nil {
-		respondWithError(w, http.StatusUnauthorized, "Couldn't validate JWT", err)
-		return
-	}
+	currentUserID := r.Context().Value("currentUserID").(uuid.UUID)
 
 	cfg.hub.SetOffline(currentUserID)
 	w.WriteHeader(http.StatusNoContent)

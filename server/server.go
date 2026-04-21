@@ -45,22 +45,20 @@ func Run() {
 	mux := http.NewServeMux()
 
 	mux.HandleFunc("POST /api/users", apiCfg.handlerCreateUser)
-
 	mux.HandleFunc("POST /api/login", apiCfg.handlerLoginUser)
 
-	mux.HandleFunc("POST /api/chats", apiCfg.handlerChat)
+	mux.HandleFunc("POST /api/chats", apiCfg.middlewareAuth(apiCfg.handlerChat))
 	mux.HandleFunc("GET /api/chats/ws", apiCfg.handlerChatWS)
+	mux.HandleFunc("POST /api/chats/{chat_id}/read", apiCfg.middlewareAuth(apiCfg.handlerMarkAsRead))
 
-	mux.HandleFunc("POST /api/chats/{chat_id}/read", apiCfg.handlerMarkAsRead)
+	mux.HandleFunc("GET /api/notifications", apiCfg.middlewareAuth(apiCfg.handlerNotifications))
 
-	mux.HandleFunc("GET /api/notifications", apiCfg.handlerNotifications)
+	mux.HandleFunc("POST /api/friends", apiCfg.middlewareAuth(apiCfg.handlerFriends))
+	mux.HandleFunc("GET /api/friends", apiCfg.middlewareAuth(apiCfg.handlerGetFriends))
+	mux.HandleFunc("DELETE /api/friends", apiCfg.middlewareAuth(apiCfg.handlerDeleteFriend))
 
-	mux.HandleFunc("POST /api/friends", apiCfg.handlerFriends)
-	mux.HandleFunc("GET /api/friends", apiCfg.handlerGetFriends)
-	mux.HandleFunc("DELETE /api/friends", apiCfg.handlerDeleteFriend)
-
-	mux.HandleFunc("POST /api/online", apiCfg.handlerSetOnline)
-	mux.HandleFunc("POST /api/offline", apiCfg.handlerSetOffline)
+	mux.HandleFunc("POST /api/online", apiCfg.middlewareAuth(apiCfg.handlerSetOnline))
+	mux.HandleFunc("POST /api/offline", apiCfg.middlewareAuth(apiCfg.handlerSetOffline))
 
 	server := &http.Server{Addr: ":8080", Handler: mux}
 	server.ListenAndServe()

@@ -5,7 +5,6 @@ import (
 	"encoding/json"
 	"net/http"
 
-	"github.com/denisnosik/cli-messenger/internal/auth"
 	"github.com/denisnosik/cli-messenger/internal/database"
 	"github.com/google/uuid"
 )
@@ -19,17 +18,7 @@ func (cfg *apiConfig) handlerChat(w http.ResponseWriter, r *http.Request) {
 		TargetNickname string `json:"target_nickname"`
 	}
 
-	token, err := auth.GetBearerToken(r.Header)
-	if err != nil {
-		respondWithError(w, http.StatusUnauthorized, "Couldn't get JWT", err)
-		return
-	}
-
-	currentUserID, err := auth.ValidateJWT(token, cfg.secret)
-	if err != nil {
-		respondWithError(w, http.StatusUnauthorized, "Couldn't validate JWT", err)
-		return
-	}
+	currentUserID := r.Context().Value("currentUserID").(uuid.UUID)
 
 	decoder := json.NewDecoder(r.Body)
 	params := parameters{}

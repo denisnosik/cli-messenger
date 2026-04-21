@@ -3,7 +3,7 @@ package server
 import (
 	"net/http"
 
-	"github.com/denisnosik/cli-messenger/internal/auth"
+	"github.com/google/uuid"
 )
 
 type unreadMessages struct {
@@ -22,17 +22,7 @@ type notificationsResponse struct {
 }
 
 func (cfg *apiConfig) handlerNotifications(w http.ResponseWriter, r *http.Request) {
-	token, err := auth.GetBearerToken(r.Header)
-	if err != nil {
-		respondWithError(w, http.StatusUnauthorized, "Couldn't get JWT", err)
-		return
-	}
-
-	currentUserID, err := auth.ValidateJWT(token, cfg.secret)
-	if err != nil {
-		respondWithError(w, http.StatusUnauthorized, "Couldn't validate JWT", err)
-		return
-	}
+	currentUserID := r.Context().Value("currentUserID").(uuid.UUID)
 
 	dbUnreadMessages, err := cfg.db.GetUnreadMessages(r.Context(), currentUserID)
 	if err != nil {

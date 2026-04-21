@@ -3,7 +3,6 @@ package server
 import (
 	"net/http"
 
-	"github.com/denisnosik/cli-messenger/internal/auth"
 	"github.com/denisnosik/cli-messenger/internal/database"
 	"github.com/google/uuid"
 )
@@ -21,17 +20,7 @@ func (cfg *apiConfig) handlerMarkAsRead(w http.ResponseWriter, r *http.Request) 
 		return
 	}
 
-	token, err := auth.GetBearerToken(r.Header)
-	if err != nil {
-		respondWithError(w, http.StatusUnauthorized, "Couldn't get JWT", err)
-		return
-	}
-
-	currentUserID, err := auth.ValidateJWT(token, cfg.secret)
-	if err != nil {
-		respondWithError(w, http.StatusUnauthorized, "Couldn't validate JWT", err)
-		return
-	}
+	currentUserID := r.Context().Value("currentUserID").(uuid.UUID)
 
 	_, err = cfg.db.GetChatMember(r.Context(), database.GetChatMemberParams{
 		ChatID: parsedChatID,

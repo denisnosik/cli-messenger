@@ -28,13 +28,13 @@ func (cfg *apiConfig) handlerCreateUser(w http.ResponseWriter, r *http.Request) 
 	decoder := json.NewDecoder(r.Body)
 	params := parameters{}
 	if err := decoder.Decode(&params); err != nil {
-		respondWithError(w, http.StatusInternalServerError, "Couldn't decode.", err)
+		respondWithError(w, http.StatusInternalServerError, "Couldn't decode.", nil)
 		return
 	}
 
 	hashPwd, err := auth.HashPassword(params.Password)
 	if err != nil {
-		respondWithError(w, http.StatusInternalServerError, "Cannot hash the password", err)
+		respondWithError(w, http.StatusInternalServerError, "Cannot hash the password", nil)
 		return
 	}
 
@@ -47,7 +47,7 @@ func (cfg *apiConfig) handlerCreateUser(w http.ResponseWriter, r *http.Request) 
 			respondWithError(w, http.StatusConflict, "User already exists", err)
 			return
 		}
-		respondWithError(w, http.StatusInternalServerError, "DB error", err)
+		respondWithError(w, http.StatusInternalServerError, "DB error", nil)
 		return
 	}
 
@@ -70,7 +70,7 @@ func (cfg *apiConfig) handlerLoginUser(w http.ResponseWriter, r *http.Request) {
 	decoder := json.NewDecoder(r.Body)
 	params := parameters{}
 	if err := decoder.Decode(&params); err != nil {
-		respondWithError(w, http.StatusInternalServerError, "Couldn't decode", err)
+		respondWithError(w, http.StatusInternalServerError, "Couldn't decode", nil)
 		return
 	}
 
@@ -95,7 +95,7 @@ func (cfg *apiConfig) handlerLoginUser(w http.ResponseWriter, r *http.Request) {
 
 	token, err := auth.MakeJWT(user.ID, cfg.secret, auth.JWTExp)
 	if err != nil {
-		respondWithError(w, http.StatusInternalServerError, "Couldn't make JWT", err)
+		respondWithError(w, http.StatusInternalServerError, "Couldn't make JWT", nil)
 		return
 	}
 
