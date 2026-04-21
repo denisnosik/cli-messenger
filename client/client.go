@@ -93,7 +93,7 @@ func Run() {
 
 		case "chat":
 			targetNickname := getChatTargetNickname()
-			result, err := cfg.client.StartChat(targetNickname, cfg.currentUser.Token)
+			result, err := cfg.client.startChat(targetNickname, cfg.currentUser.Token)
 			if err != nil {
 				fmt.Printf("Couldn't open chat. %v\n", err)
 				continue

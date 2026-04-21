@@ -17,7 +17,7 @@ type chatResponse struct {
 	ChatID uuid.UUID `json:"id"`
 }
 
-func (c *Client) StartChat(targetNickname string, token string) (*chatResponse, error) {
+func (c *Client) startChat(targetNickname string, token string) (*chatResponse, error) {
 	body, err := json.Marshal(chatRequest{
 		TargetNickname: targetNickname,
 	})
