@@ -3,7 +3,6 @@ package client
 import (
 	"encoding/json"
 	"fmt"
-	"net/http"
 	"net/url"
 	"strings"
 	"sync"
@@ -105,26 +104,5 @@ func (c *Client) connectToChat(chatID uuid.UUID, token string) error {
 		fmt.Println("Couldn't close message:", err)
 		return err
 	}
-	return nil
-}
-
-func (c *Client) markAsRead(chatID uuid.UUID, token string) error {
-	url := fmt.Sprintf("%s/api/chats/%s/read", baseURL, chatID)
-	req, err := http.NewRequest("POST", url, nil)
-	if err != nil {
-		return fmt.Errorf("request failed: %w", err)
-	}
-
-	req.Header.Set("Authorization", "Bearer "+token)
-	res, err := c.httpClient.Do(req)
-	if err != nil {
-		return fmt.Errorf("request failed: %w", err)
-	}
-	defer res.Body.Close()
-
-	if res.StatusCode != http.StatusNoContent {
-		return parseErrorResponse(res)
-	}
-
 	return nil
 }

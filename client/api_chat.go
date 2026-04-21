@@ -49,3 +49,24 @@ func (c *Client) startChat(targetNickname string, token string) (*chatResponse, 
 
 	return &result, nil
 }
+
+func (c *Client) markAsRead(chatID uuid.UUID, token string) error {
+	url := fmt.Sprintf("%s/api/chats/%s/read", baseURL, chatID)
+	req, err := http.NewRequest("POST", url, nil)
+	if err != nil {
+		return fmt.Errorf("request failed: %w", err)
+	}
+
+	req.Header.Set("Authorization", "Bearer "+token)
+	res, err := c.httpClient.Do(req)
+	if err != nil {
+		return fmt.Errorf("server is unavailable")
+	}
+	defer res.Body.Close()
+
+	if res.StatusCode != http.StatusNoContent {
+		return parseErrorResponse(res)
+	}
+
+	return nil
+}
