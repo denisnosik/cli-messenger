@@ -74,10 +74,15 @@ func Run() {
 			if isAuthenticated(cfg) {
 				handleNotifications(cfg)
 			}
+		case "help":
+			handleHelp()
 		case "exit":
+			handleExit(cfg)
+		case "/exit":
 			handleExit(cfg)
 		default:
 			fmt.Println("Invalid command.")
+			handleHelp()
 		}
 	}
 }
@@ -138,10 +143,12 @@ func handleLogin(cfg *config) {
 
 func handleChat(cfg *config, input []string) {
 	if len(input) < 2 {
+		fmt.Println("==============================")
 		fmt.Println("Invalid input. Usage:")
 		fmt.Println()
 		fmt.Printf("  %-30s %s\n", "chat <nickname>", "open chat with friend")
 		fmt.Println()
+		fmt.Println("==============================")
 		return
 	}
 	targetNickname := input[1]
@@ -167,8 +174,10 @@ func handleFriends(cfg *config, input []string) {
 		return
 	case "--delete":
 		if len(input) < 3 {
+			fmt.Println("==============================")
 			fmt.Println("Invalid input")
 			fmt.Printf("  %-30s %s\n", "friends --delete <nickname>", "remove friend")
+			fmt.Println("==============================")
 			return
 		}
 
@@ -221,7 +230,6 @@ func handleNotifications(cfg *config) {
 	if len(notifications.UnreadMessages) == 0 && len(notifications.FriendRequests) == 0 {
 		fmt.Println()
 		fmt.Println("You have no notifications")
-		fmt.Println("==============================")
 		return
 	}
 
@@ -242,8 +250,8 @@ func handleNotifications(cfg *config) {
 				fmt.Printf("Friend request from %s\n", f.SenderNickname)
 			}
 		}
-		fmt.Println("==============================")
 	}
+	fmt.Println("==============================")
 }
 
 func handleExit(cfg *config) {
@@ -256,7 +264,22 @@ func handleExit(cfg *config) {
 	os.Exit(0)
 }
 
+func handleHelp() {
+	fmt.Println("==============================")
+	fmt.Println()
+	fmt.Printf("  %-30s %s\n", "register", "create a new account")
+	fmt.Printf("  %-30s %s\n", "login", "sign in with your nickname and password")
+	fmt.Printf("  %-30s %s\n", "chat <nickname>", "open a chat with a friend")
+	fmt.Printf("  %-30s %s\n", "friends <nickname>", "send a friend request (friends --help for more)")
+	fmt.Printf("  %-30s %s\n", "notifications", "view unread messages and friend requests")
+	fmt.Printf("  %-30s %s\n", "help", "show available commands")
+	fmt.Printf("  %-30s %s\n", "exit", "quit the application")
+	fmt.Println()
+	fmt.Println("==============================")
+}
+
 func displayFriendsHelp() {
+	fmt.Println("==============================")
 	fmt.Println("Invalid input. Usage:")
 	fmt.Println()
 	fmt.Printf("  %-30s %s\n", "friends <nickname>", "send friend request")
@@ -264,6 +287,7 @@ func displayFriendsHelp() {
 	fmt.Printf("  %-30s %s\n", "friends --delete <nickname>", "remove friend")
 	fmt.Printf("  %-30s %s\n", "friends --help", "show available commands")
 	fmt.Println()
+	fmt.Println("==============================")
 }
 
 func displayFriendsList(cfg *config) {

@@ -15,12 +15,15 @@ INSERT INTO messages (
 RETURNING *;
 
 -- name: GetMessagesByChat :many
-SELECT messages.content, users.nickname, messages.created_at 
-FROM messages
-JOIN users ON users.id = messages.sender_id
-WHERE messages.chat_id = $1
-ORDER BY messages.created_at
-LIMIT $2;
+SELECT * FROM (
+    SELECT m.content, u.nickname, m.created_at
+    FROM messages m
+    JOIN users u ON u.id = m.sender_id
+    WHERE m.chat_id = $1
+    ORDER BY m.created_at DESC
+    LIMIT $2
+) sub
+ORDER BY created_at ASC;
 
 -- name: MarkMessagesAsRead :exec
 UPDATE messages

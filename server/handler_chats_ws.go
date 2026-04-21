@@ -99,7 +99,7 @@ func (cfg *apiConfig) handlerChatWS(w http.ResponseWriter, r *http.Request) {
 
 	messages, err := cfg.db.GetMessagesByChat(context.Background(), database.GetMessagesByChatParams{
 		ChatID: parsedChatID,
-		Limit:  20, // last 20 msgs
+		Limit:  50, // last 50 msgs
 	})
 	if err != nil {
 		respondWithError(w, http.StatusInternalServerError, "Couldn't get messages from db", err)
@@ -125,7 +125,7 @@ func (cfg *apiConfig) handlerChatWS(w http.ResponseWriter, r *http.Request) {
 			client.send <- payload
 		}
 
-		client.send <- []byte("----- new messages -----")
+		client.send <- []byte("-------------------------")
 	}
 
 	go client.writeToClient()

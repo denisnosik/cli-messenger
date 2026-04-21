@@ -50,6 +50,10 @@ func (h *Hub) run() {
 					continue
 				}
 
+				if client.userID == msg.senderID {
+					continue
+				}
+
 				select {
 				case client.send <- msg.payload:
 				default:

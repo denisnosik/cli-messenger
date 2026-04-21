@@ -52,7 +52,7 @@ func (c *Client) connectToChat(chatID uuid.UUID, token string) error {
 				continue
 			}
 
-			fmt.Printf("\n[%s]\n[%s] %s\n> ", wsMsg.CreatedAt.Format("02 Jan 15:04"), wsMsg.Nickname, wsMsg.Content)
+			fmt.Printf("\n[%s] [%s] %s\n> ", wsMsg.CreatedAt.Format("02 Jan 15:04"), wsMsg.Nickname, wsMsg.Content)
 		}
 	}()
 
