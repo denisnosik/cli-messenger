@@ -59,165 +59,27 @@ func Run() {
 		command := input[0]
 		switch command {
 		case "register":
-			nickname, password := getLoginDetails()
-			result, err := cfg.client.register(nickname, password)
-			if err != nil {
-				fmt.Printf("Couldn't register. %v\n", err)
-				continue
-			}
-
-			fmt.Printf("Registered as %s\n", result.Nickname)
-			continue
-
+			handleRegister(cfg)
 		case "login":
-			nickname, password := getLoginDetails()
-			result, err := cfg.client.login(nickname, password)
-			if err != nil {
-				fmt.Printf("Couldn't login. %v\n", err)
-				continue
-			}
-
-			cfg.currentUser.Nickname = result.Nickname
-			cfg.currentUser.Token = result.Token
-
-			err = cfg.client.setOnline(cfg.currentUser.Token)
-			if err != nil {
-				fmt.Println(err)
-				continue
-			}
-
-			fmt.Printf("Login successful as %s\n", result.Nickname)
-
-			displayNotifications(cfg)
-			continue
-
+			handleLogin(cfg)
 		case "chat":
-			targetNickname := getChatTargetNickname()
-			result, err := cfg.client.startChat(targetNickname, cfg.currentUser.Token)
-			if err != nil {
-				fmt.Printf("Couldn't open chat. %v\n", err)
-				continue
+			if isAuthenticated(cfg) {
+				handleChat(cfg, input)
 			}
-
-			client.connectToChat(result.ChatID, cfg.currentUser.Token)
-
 		case "friends":
-			if len(input) < 2 {
-				fmt.Println("Use command friends with")
-				fmt.Println("friends nickname")
-				fmt.Println("friends --list")
-				fmt.Println("friends --delete nickname")
-				continue
+			if isAuthenticated(cfg) {
+				handleFriends(cfg, input)
 			}
-
-			switch input[1] {
-			case "--list":
-				displayFriends(cfg)
-				continue
-
-			case "--delete":
-				if len(input) < 3 {
-					fmt.Println("Use friends --delete nickname")
-					continue
-				}
-				targetName := input[2]
-				err := cfg.client.deleteFriendship(targetName, cfg.currentUser.Token)
-				if err != nil {
-					fmt.Println(err)
-					continue
-				}
-				fmt.Printf("You have successfully removed %s from your friends list.\n", targetName)
-				continue
-			}
-
-			targetNickname := input[1]
-			result, err := cfg.client.sendFriendRequest(targetNickname, cfg.currentUser.Token)
-			if err != nil {
-				fmt.Println(err)
-				continue
-			}
-
-			switch result.Status {
-			case "created":
-				fmt.Printf("Friend request successfully sent to %s.\n", targetNickname)
-				continue
-			case "accepted":
-				fmt.Printf("You have successfully added %s as a friend.\n", targetNickname)
-				continue
-			case "sent":
-				fmt.Printf("Friend request to %s already sent.\n", targetNickname)
-				continue
-			case "friends":
-				fmt.Printf("You and %s are already friends.\n", targetNickname)
-				continue
-			}
-
 		case "notifications":
-			displayNotifications(cfg)
-			continue
-
-		case "exit":
-			fmt.Println("Closing the messenger... Goodbye!")
-			if cfg.currentUser.Token != "" {
-				cfg.client.setOffline(cfg.currentUser.Token)
+			if isAuthenticated(cfg) {
+				handleNotifications(cfg)
 			}
-			os.Exit(0)
-
+		case "exit":
+			handleExit(cfg)
 		default:
 			fmt.Println("Invalid command.")
-			continue
 		}
 	}
-}
-
-func displayNotifications(cfg *config) {
-	notifications, err := cfg.client.getNotifications(cfg.currentUser.Token)
-	if err != nil {
-		fmt.Printf("Couldn't get notifications. %v\n", err)
-		return
-	}
-
-	if len(notifications.UnreadMessages) == 0 && len(notifications.FriendRequests) == 0 {
-		fmt.Println("You have no notifications")
-		return
-	}
-
-	if len(notifications.UnreadMessages) > 0 {
-		for _, msg := range notifications.UnreadMessages {
-			fmt.Printf("You have %d unread messages from %s\n", msg.Count, msg.Nickname)
-		}
-	}
-
-	if len(notifications.FriendRequests) > 0 {
-		for _, f := range notifications.FriendRequests {
-			if f.SenderNickname == cfg.currentUser.Nickname {
-				fmt.Printf("Friend request to %s is pending\n", f.ReceiverNickname)
-			} else {
-				fmt.Printf("Friend request from %s\n", f.SenderNickname)
-			}
-		}
-	}
-}
-
-func displayFriends(cfg *config) {
-	friends, err := cfg.client.getFriends(cfg.currentUser.Token)
-	if err != nil {
-		fmt.Println(err)
-		return
-	}
-	fmt.Println()
-	fmt.Println("Your friends:")
-	count := 1
-	for _, f := range friends {
-		status := "offline"
-		if f.Online {
-			status = "online"
-		}
-		fmt.Printf("%d.%s [%s]\n", count, f.Nickname, status)
-		count += 1
-	}
-	fmt.Println("------------")
-	fmt.Println()
 }
 
 func getInput(msg string) []string {
@@ -234,13 +96,205 @@ func getInput(msg string) []string {
 	return strings.Fields(line)
 }
 
+func isAuthenticated(cfg *config) bool {
+	if cfg.currentUser.Token == "" {
+		fmt.Println("You must be logged in first")
+		return false
+	}
+	return true
+}
+
+func handleRegister(cfg *config) {
+	nickname, password := getLoginDetails()
+	result, err := cfg.client.register(nickname, password)
+	if err != nil {
+		fmt.Printf("Couldn't register. %v\n", err)
+		return
+	}
+
+	fmt.Printf("Registered as %s\n", result.Nickname)
+}
+
+func handleLogin(cfg *config) {
+	nickname, password := getLoginDetails()
+	result, err := cfg.client.login(nickname, password)
+	if err != nil {
+		fmt.Printf("Couldn't login. %v\n", err)
+		return
+	}
+
+	cfg.currentUser.Nickname = result.Nickname
+	cfg.currentUser.Token = result.Token
+
+	if err := cfg.client.setOnline(cfg.currentUser.Token); err != nil {
+		fmt.Println(err)
+		return
+	}
+	fmt.Println("==============================")
+	fmt.Printf("Login successful as %s\n", result.Nickname)
+
+	handleNotifications(cfg)
+}
+
+func handleChat(cfg *config, input []string) {
+	if len(input) < 2 {
+		fmt.Println("Invalid input. Usage:")
+		fmt.Println()
+		fmt.Printf("  %-30s %s\n", "chat <nickname>", "open chat with friend")
+		fmt.Println()
+		return
+	}
+	targetNickname := input[1]
+	result, err := cfg.client.startChat(targetNickname, cfg.currentUser.Token)
+	if err != nil {
+		fmt.Printf("Couldn't open chat. %v\n", err)
+		return
+	}
+
+	cfg.client.connectToChat(result.ChatID, cfg.currentUser.Token)
+}
+
+func handleFriends(cfg *config, input []string) {
+	if len(input) < 2 {
+		displayFriendsHelp()
+		return
+	}
+
+	// args
+	switch input[1] {
+	case "--list":
+		displayFriendsList(cfg)
+		return
+	case "--delete":
+		if len(input) < 3 {
+			fmt.Println("Invalid input")
+			fmt.Printf("  %-30s %s\n", "friends --delete <nickname>", "remove friend")
+			return
+		}
+
+		targetName := input[2]
+
+		err := cfg.client.deleteFriendship(targetName, cfg.currentUser.Token)
+		if err != nil {
+			fmt.Println(err)
+			return
+		}
+
+		fmt.Printf("You have successfully removed %s from your friends list.\n", targetName)
+		return
+	case "--help":
+		displayFriendsHelp()
+		return
+	default:
+		targetNickname := input[1]
+
+		result, err := cfg.client.sendFriendRequest(targetNickname, cfg.currentUser.Token)
+		if err != nil {
+			fmt.Println(err)
+			return
+		}
+
+		switch result.Status {
+		case "created":
+			fmt.Printf("Friend request successfully sent to %s.\n", targetNickname)
+			return
+		case "accepted":
+			fmt.Printf("You have successfully added %s as a friend.\n", targetNickname)
+			return
+		case "sent":
+			fmt.Printf("Friend request to %s already sent.\n", targetNickname)
+			return
+		case "friends":
+			fmt.Printf("You and %s are already friends.\n", targetNickname)
+			return
+		}
+	}
+}
+
+func handleNotifications(cfg *config) {
+	notifications, err := cfg.client.getNotifications(cfg.currentUser.Token)
+	if err != nil {
+		fmt.Printf("Couldn't get notifications. %v\n", err)
+		return
+	}
+
+	if len(notifications.UnreadMessages) == 0 && len(notifications.FriendRequests) == 0 {
+		fmt.Println()
+		fmt.Println("You have no notifications")
+		fmt.Println("==============================")
+		return
+	}
+
+	if len(notifications.UnreadMessages) > 0 {
+		fmt.Println()
+		for _, msg := range notifications.UnreadMessages {
+			fmt.Printf("You have %d unread messages from %s\n", msg.Count, msg.Nickname)
+		}
+		fmt.Println()
+	}
+
+	if len(notifications.FriendRequests) > 0 {
+		fmt.Println()
+		for _, f := range notifications.FriendRequests {
+			if f.SenderNickname == cfg.currentUser.Nickname {
+				fmt.Printf("Friend request to %s is pending\n", f.ReceiverNickname)
+			} else {
+				fmt.Printf("Friend request from %s\n", f.SenderNickname)
+			}
+		}
+		fmt.Println("==============================")
+	}
+}
+
+func handleExit(cfg *config) {
+	fmt.Println()
+	fmt.Println("Closing the messenger... Goodbye!")
+	fmt.Println()
+	if cfg.currentUser.Token != "" {
+		cfg.client.setOffline(cfg.currentUser.Token)
+	}
+	os.Exit(0)
+}
+
+func displayFriendsHelp() {
+	fmt.Println("Invalid input. Usage:")
+	fmt.Println()
+	fmt.Printf("  %-30s %s\n", "friends <nickname>", "send friend request")
+	fmt.Printf("  %-30s %s\n", "friends --list", "show all friends")
+	fmt.Printf("  %-30s %s\n", "friends --delete <nickname>", "remove friend")
+	fmt.Printf("  %-30s %s\n", "friends --help", "show available commands")
+	fmt.Println()
+}
+
+func displayFriendsList(cfg *config) {
+	friends, err := cfg.client.getFriends(cfg.currentUser.Token)
+	if err != nil {
+		fmt.Println(err)
+		return
+	}
+	fmt.Println("==============================")
+	fmt.Println("Your friends:")
+	count := 1
+	for _, f := range friends {
+		status := "offline"
+		if f.Online {
+			status = "online"
+		}
+		fmt.Printf("%d.%-15s [%s]\n", count, f.Nickname, status)
+		count += 1
+	}
+	fmt.Println("==============================")
+}
+
 func getLoginDetails() (string, string) {
 	for {
+		fmt.Println()
 		nickname := getInput("Enter a nickname")
 		if len(nickname) == 0 {
 			fmt.Println("you have not entered a nickname")
 			continue
 		}
+		fmt.Println()
 		password := getInput("Enter a password")
 		if len(password) == 0 {
 			fmt.Println("you have not entered a password")
@@ -248,17 +302,5 @@ func getLoginDetails() (string, string) {
 		}
 
 		return nickname[0], password[0]
-	}
-}
-
-func getChatTargetNickname() string {
-	for {
-		targetNickname := getInput("Enter a nickname")
-		if len(targetNickname) == 0 {
-			fmt.Println("you have not entered a nickname")
-			continue
-		}
-
-		return targetNickname[0]
 	}
 }
