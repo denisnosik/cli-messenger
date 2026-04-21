@@ -48,11 +48,11 @@ func (c *Client) connectToChat(chatID uuid.UUID, token string) error {
 			}
 			wsMsg := wsMessage{}
 			if err := json.Unmarshal(msg, &wsMsg); err != nil {
-				fmt.Printf("\n%s\n> ", string(msg))
+				fmt.Printf("\n%s\n", string(msg))
 				continue
 			}
 
-			fmt.Printf("\n[%s] [%s] %s\n> ", wsMsg.CreatedAt.Format("02 Jan 15:04"), wsMsg.Nickname, wsMsg.Content)
+			fmt.Printf("\n[%s] [%s] %s\n", wsMsg.CreatedAt.Format("02 Jan 15:04"), wsMsg.Nickname, wsMsg.Content)
 		}
 	}()
 
@@ -79,12 +79,12 @@ func (c *Client) connectToChat(chatID uuid.UUID, token string) error {
 			return nil
 		default:
 		}
-		fmt.Print("> ")
-		if !scanner.Scan() {
+		line, err := rl.Readline()
+		if err != nil {
 			break
 		}
 
-		text := strings.TrimSpace(scanner.Text())
+		text := strings.TrimSpace(line)
 		if text == "/exit" {
 			closeDone()
 			break
@@ -93,7 +93,7 @@ func (c *Client) connectToChat(chatID uuid.UUID, token string) error {
 			continue
 		}
 
-		err := conn.WriteMessage(websocket.TextMessage, []byte(text))
+		err = conn.WriteMessage(websocket.TextMessage, []byte(text))
 		if err != nil {
 			fmt.Println("Couldn't send message:", err)
 			break

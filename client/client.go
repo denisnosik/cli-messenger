@@ -1,7 +1,6 @@
 package client
 
 import (
-	"bufio"
 	"fmt"
 	"net/http"
 	"os"
@@ -9,6 +8,8 @@ import (
 	"strings"
 	"syscall"
 	"time"
+
+	"github.com/chzyer/readline"
 )
 
 const baseURL = "http://localhost:8080"
@@ -27,7 +28,15 @@ type config struct {
 	currentUser CurrentUser
 }
 
-var scanner = bufio.NewScanner(os.Stdin)
+var rl *readline.Instance
+
+func init() {
+	var err error
+	rl, err = readline.New("> ")
+	if err != nil {
+		panic(err)
+	}
+}
 
 func Run() {
 	timeout := 5 * time.Second
@@ -48,6 +57,8 @@ func Run() {
 		}
 		os.Exit(0)
 	}()
+
+	defer rl.Close()
 
 	// repl
 	for {
@@ -91,12 +102,10 @@ func getInput(msg string) []string {
 	if len(msg) > 0 {
 		fmt.Println(msg)
 	}
-	fmt.Print("> ")
-	scanned := scanner.Scan()
-	if !scanned {
+	line, err := rl.Readline()
+	if err != nil {
 		return nil
 	}
-	line := scanner.Text()
 	line = strings.TrimSpace(line)
 	return strings.Fields(line)
 }
@@ -110,7 +119,7 @@ func isAuthenticated(cfg *config) bool {
 }
 
 func handleRegister(cfg *config) {
-	nickname, password := getLoginDetails()
+	nickname, password := getRegisterDetails()
 	result, err := cfg.client.register(nickname, password)
 	if err != nil {
 		fmt.Printf("Couldn't register. %v\n", err)
@@ -230,6 +239,7 @@ func handleNotifications(cfg *config) {
 	if len(notifications.UnreadMessages) == 0 && len(notifications.FriendRequests) == 0 {
 		fmt.Println()
 		fmt.Println("You have no notifications")
+		fmt.Println("==============================")
 		return
 	}
 
@@ -238,7 +248,6 @@ func handleNotifications(cfg *config) {
 		for _, msg := range notifications.UnreadMessages {
 			fmt.Printf("You have %d unread messages from %s\n", msg.Count, msg.Nickname)
 		}
-		fmt.Println()
 	}
 
 	if len(notifications.FriendRequests) > 0 {
@@ -261,6 +270,7 @@ func handleExit(cfg *config) {
 	if cfg.currentUser.Token != "" {
 		cfg.client.setOffline(cfg.currentUser.Token)
 	}
+	rl.Close()
 	os.Exit(0)
 }
 
@@ -310,6 +320,34 @@ func displayFriendsList(cfg *config) {
 	fmt.Println("==============================")
 }
 
+func getRegisterDetails() (string, string) {
+	for {
+		fmt.Println()
+		nickname := getInput("Enter a nickname")
+		if len(nickname) == 0 {
+			fmt.Println("you have not entered a nickname")
+			continue
+		}
+		if len(nickname[0]) < 4 && len(nickname[0]) > 20 {
+			fmt.Println("nickname must be from 4 to 20 characters in length")
+			continue
+		}
+
+		fmt.Println()
+		password := getInput("Enter a password")
+		if len(password) == 0 {
+			fmt.Println("you have not entered a password")
+			continue
+		}
+		if len(password[0]) < 6 {
+			fmt.Println("password must be longer than 6 characters")
+			continue
+		}
+
+		return nickname[0], password[0]
+	}
+}
+
 func getLoginDetails() (string, string) {
 	for {
 		fmt.Println()
@@ -318,6 +356,7 @@ func getLoginDetails() (string, string) {
 			fmt.Println("you have not entered a nickname")
 			continue
 		}
+
 		fmt.Println()
 		password := getInput("Enter a password")
 		if len(password) == 0 {
