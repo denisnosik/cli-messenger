@@ -207,5 +207,17 @@ func (cfg *apiConfig) handlerDeleteFriend(w http.ResponseWriter, r *http.Request
 		return
 	}
 
+	chatID, err := cfg.db.GetChatByTwoUsers(r.Context(), database.GetChatByTwoUsersParams{
+		UserID:   currentUserID,
+		UserID_2: targetUser.ID,
+	})
+	if err == nil {
+		err = cfg.db.DeleteChat(r.Context(), chatID)
+		if err != nil {
+			respondWithError(w, http.StatusInternalServerError, "Couldn't delete chat", nil)
+			return
+		}
+	}
+
 	w.WriteHeader(http.StatusNoContent)
 }

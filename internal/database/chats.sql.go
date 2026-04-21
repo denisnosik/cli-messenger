@@ -29,6 +29,16 @@ func (q *Queries) CreateChat(ctx context.Context) (Chat, error) {
 	return i, err
 }
 
+const deleteChat = `-- name: DeleteChat :exec
+DELETE FROM chats
+WHERE id = $1
+`
+
+func (q *Queries) DeleteChat(ctx context.Context, id uuid.UUID) error {
+	_, err := q.db.ExecContext(ctx, deleteChat, id)
+	return err
+}
+
 const getChatByID = `-- name: GetChatByID :one
 SELECT id, created_at FROM chats
 WHERE id = $1

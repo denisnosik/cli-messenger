@@ -17,3 +17,7 @@ LIMIT 1;
 SELECT chats.id FROM chats
 JOIN chat_members cm1 ON cm1.chat_id = chats.id AND cm1.user_id = $1
 JOIN chat_members cm2 ON cm2.chat_id = chats.id AND cm2.user_id = $2;
+
+-- name: DeleteChat :exec
+DELETE FROM chats
+WHERE id = $1;
