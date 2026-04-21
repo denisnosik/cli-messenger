@@ -20,7 +20,7 @@ type allFriendsResponse struct {
 	Online   bool   `json:"online"`
 }
 
-func (c *Client) handlerFriends(targetNickname string, token string) (*friendsResponse, error) {
+func (c *Client) sendFriendRequest(targetNickname string, token string) (*friendsResponse, error) {
 	body, err := json.Marshal(friendsRequest{
 		TargetNickname: targetNickname,
 	})
@@ -53,7 +53,7 @@ func (c *Client) handlerFriends(targetNickname string, token string) (*friendsRe
 	return &result, nil
 }
 
-func (c *Client) handlerGetFriends(token string) ([]allFriendsResponse, error) {
+func (c *Client) getFriends(token string) ([]allFriendsResponse, error) {
 	req, err := http.NewRequest("GET", baseURL+"/api/friends", nil)
 	if err != nil {
 		return nil, fmt.Errorf("request failed: %w", err)
@@ -83,7 +83,7 @@ func (c *Client) handlerGetFriends(token string) ([]allFriendsResponse, error) {
 	return result, nil
 }
 
-func (c *Client) DeleteFriendship(targetNickname string, token string) error {
+func (c *Client) deleteFriendship(targetNickname string, token string) error {
 	body, err := json.Marshal(friendsRequest{
 		TargetNickname: targetNickname,
 	})

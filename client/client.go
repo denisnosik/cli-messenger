@@ -44,7 +44,7 @@ func Run() {
 	go func() {
 		<-c
 		if cfg.currentUser.Token != "" {
-			cfg.client.SetOffline(cfg.currentUser.Token)
+			cfg.client.setOffline(cfg.currentUser.Token)
 		}
 		os.Exit(0)
 	}()
@@ -60,7 +60,7 @@ func Run() {
 		switch command {
 		case "register":
 			nickname, password := getLoginDetails()
-			result, err := cfg.client.Register(nickname, password)
+			result, err := cfg.client.register(nickname, password)
 			if err != nil {
 				fmt.Printf("Couldn't register. %v\n", err)
 				continue
@@ -71,7 +71,7 @@ func Run() {
 
 		case "login":
 			nickname, password := getLoginDetails()
-			result, err := cfg.client.Login(nickname, password)
+			result, err := cfg.client.login(nickname, password)
 			if err != nil {
 				fmt.Printf("Couldn't login. %v\n", err)
 				continue
@@ -80,7 +80,7 @@ func Run() {
 			cfg.currentUser.Nickname = result.Nickname
 			cfg.currentUser.Token = result.Token
 
-			err = cfg.client.SetOnline(cfg.currentUser.Token)
+			err = cfg.client.setOnline(cfg.currentUser.Token)
 			if err != nil {
 				fmt.Println(err)
 				continue
@@ -99,7 +99,7 @@ func Run() {
 				continue
 			}
 
-			client.ConnectToChat(result.ChatID, cfg.currentUser.Token)
+			client.connectToChat(result.ChatID, cfg.currentUser.Token)
 
 		case "friends":
 			if len(input) < 2 {
@@ -121,7 +121,7 @@ func Run() {
 					continue
 				}
 				targetName := input[2]
-				err := cfg.client.DeleteFriendship(targetName, cfg.currentUser.Token)
+				err := cfg.client.deleteFriendship(targetName, cfg.currentUser.Token)
 				if err != nil {
 					fmt.Println(err)
 					continue
@@ -131,7 +131,7 @@ func Run() {
 			}
 
 			targetNickname := input[1]
-			result, err := cfg.client.handlerFriends(targetNickname, cfg.currentUser.Token)
+			result, err := cfg.client.sendFriendRequest(targetNickname, cfg.currentUser.Token)
 			if err != nil {
 				fmt.Println(err)
 				continue
@@ -159,7 +159,7 @@ func Run() {
 		case "exit":
 			fmt.Println("Closing the messenger... Goodbye!")
 			if cfg.currentUser.Token != "" {
-				cfg.client.SetOffline(cfg.currentUser.Token)
+				cfg.client.setOffline(cfg.currentUser.Token)
 			}
 			os.Exit(0)
 
@@ -171,7 +171,7 @@ func Run() {
 }
 
 func displayNotifications(cfg *config) {
-	notifications, err := cfg.client.GetNotifications(cfg.currentUser.Token)
+	notifications, err := cfg.client.getNotifications(cfg.currentUser.Token)
 	if err != nil {
 		fmt.Printf("Couldn't get notifications. %v\n", err)
 		return
@@ -200,7 +200,7 @@ func displayNotifications(cfg *config) {
 }
 
 func displayFriends(cfg *config) {
-	friends, err := cfg.client.handlerGetFriends(cfg.currentUser.Token)
+	friends, err := cfg.client.getFriends(cfg.currentUser.Token)
 	if err != nil {
 		fmt.Println(err)
 		return

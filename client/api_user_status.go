@@ -6,7 +6,7 @@ import (
 	"net/http"
 )
 
-func (c *Client) SetOnline(token string) error {
+func (c *Client) setOnline(token string) error {
 	req, err := http.NewRequest("POST", baseURL+"/api/online", nil)
 	if err != nil {
 		return fmt.Errorf("request failed: %w", err)
@@ -30,7 +30,7 @@ func (c *Client) SetOnline(token string) error {
 	return nil
 }
 
-func (c *Client) SetOffline(token string) error {
+func (c *Client) setOffline(token string) error {
 	req, err := http.NewRequest("POST", baseURL+"/api/offline", nil)
 	if err != nil {
 		return fmt.Errorf("request failed: %w", err)

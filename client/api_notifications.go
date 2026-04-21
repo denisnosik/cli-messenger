@@ -21,7 +21,7 @@ type friendRequest struct {
 	ReceiverNickname string `json:"receiver_nickname"`
 }
 
-func (c *Client) GetNotifications(token string) (notificationsResponse, error) {
+func (c *Client) getNotifications(token string) (notificationsResponse, error) {
 	req, err := http.NewRequest("GET", baseURL+"/api/notifications", nil)
 	if err != nil {
 		return notificationsResponse{}, fmt.Errorf("request failed: %w", err)
