@@ -38,11 +38,7 @@ func (c *Client) startChat(targetNickname string, token string) (*chatResponse, 
 	defer res.Body.Close()
 
 	if res.StatusCode != http.StatusOK && res.StatusCode != http.StatusCreated {
-		var errResponse struct {
-			Error string `json:"error"`
-		}
-		json.NewDecoder(res.Body).Decode(&errResponse)
-		return nil, fmt.Errorf("%s", errResponse.Error)
+		return nil, parseErrorResponse(res)
 	}
 
 	decoder := json.NewDecoder(res.Body)

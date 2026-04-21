@@ -35,11 +35,7 @@ func (c *Client) getNotifications(token string) (notificationsResponse, error) {
 	defer res.Body.Close()
 
 	if res.StatusCode != http.StatusOK {
-		var errResponse struct {
-			Error string `json:"error"`
-		}
-		json.NewDecoder(res.Body).Decode(&errResponse)
-		return notificationsResponse{}, fmt.Errorf("%s", errResponse.Error)
+		return notificationsResponse{}, parseErrorResponse(res)
 	}
 
 	decoder := json.NewDecoder(res.Body)

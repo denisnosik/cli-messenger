@@ -123,7 +123,7 @@ func (c *Client) markAsRead(chatID uuid.UUID, token string) error {
 	defer res.Body.Close()
 
 	if res.StatusCode != http.StatusNoContent {
-		return fmt.Errorf("error: %s", res.Status)
+		return parseErrorResponse(res)
 	}
 
 	return nil

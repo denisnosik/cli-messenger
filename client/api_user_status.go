@@ -1,7 +1,6 @@
 package client
 
 import (
-	"encoding/json"
 	"fmt"
 	"net/http"
 )
@@ -20,11 +19,7 @@ func (c *Client) setOnline(token string) error {
 	defer res.Body.Close()
 
 	if res.StatusCode != http.StatusNoContent {
-		var errResponse struct {
-			Error string `json:"error"`
-		}
-		json.NewDecoder(res.Body).Decode(&errResponse)
-		return fmt.Errorf("%s", errResponse.Error)
+		return parseErrorResponse(res)
 	}
 
 	return nil
@@ -44,11 +39,7 @@ func (c *Client) setOffline(token string) error {
 	defer res.Body.Close()
 
 	if res.StatusCode != http.StatusNoContent {
-		var errResponse struct {
-			Error string `json:"error"`
-		}
-		json.NewDecoder(res.Body).Decode(&errResponse)
-		return fmt.Errorf("%s", errResponse.Error)
+		return parseErrorResponse(res)
 	}
 
 	return nil

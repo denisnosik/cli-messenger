@@ -38,7 +38,7 @@ func (c *Client) login(nickname, password string) (*loginResponse, error) {
 	defer res.Body.Close()
 
 	if res.StatusCode != http.StatusOK {
-		return nil, fmt.Errorf("error: %s", res.Status)
+		return nil, parseErrorResponse(res)
 	}
 
 	decoder := json.NewDecoder(res.Body)

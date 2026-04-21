@@ -67,11 +67,7 @@ func (c *Client) getFriends(token string) ([]allFriendsResponse, error) {
 	defer res.Body.Close()
 
 	if res.StatusCode != http.StatusOK {
-		var errResponse struct {
-			Error string `json:"error"`
-		}
-		json.NewDecoder(res.Body).Decode(&errResponse)
-		return nil, fmt.Errorf("%s", errResponse.Error)
+		return nil, parseErrorResponse(res)
 	}
 
 	decoder := json.NewDecoder(res.Body)
@@ -104,11 +100,7 @@ func (c *Client) deleteFriendship(targetNickname string, token string) error {
 	defer res.Body.Close()
 
 	if res.StatusCode != http.StatusNoContent {
-		var errResponse struct {
-			Error string `json:"error"`
-		}
-		json.NewDecoder(res.Body).Decode(&errResponse)
-		return fmt.Errorf("%s", errResponse.Error)
+		return parseErrorResponse(res)
 	}
 
 	return nil

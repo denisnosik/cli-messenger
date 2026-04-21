@@ -37,7 +37,7 @@ func (c *Client) register(nickname, password string) (*registerResponse, error) 
 	defer res.Body.Close()
 
 	if res.StatusCode != http.StatusCreated {
-		return nil, fmt.Errorf("error: %s", res.Status)
+		return nil, parseErrorResponse(res)
 	}
 
 	decoder := json.NewDecoder(res.Body)
