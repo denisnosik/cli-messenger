@@ -119,7 +119,7 @@ func isAuthenticated(cfg *config) bool {
 }
 
 func handleRegister(cfg *config) {
-	nickname, password := getRegisterDetails()
+	nickname, password := getRegisterDetails(cfg)
 	result, err := cfg.client.register(nickname, password)
 	if err != nil {
 		fmt.Printf("Couldn't register. %v\n", err)
@@ -130,7 +130,7 @@ func handleRegister(cfg *config) {
 }
 
 func handleLogin(cfg *config) {
-	nickname, password := getLoginDetails()
+	nickname, password := getLoginDetails(cfg)
 	result, err := cfg.client.login(nickname, password)
 	if err != nil {
 		fmt.Printf("Couldn't login. %v\n", err)
@@ -320,13 +320,16 @@ func displayFriendsList(cfg *config) {
 	fmt.Println("==============================")
 }
 
-func getRegisterDetails() (string, string) {
+func getRegisterDetails(cfg *config) (string, string) {
 	for {
 		fmt.Println()
 		nickname := getInput("Enter a nickname")
 		if len(nickname) == 0 {
 			fmt.Println("you have not entered a nickname")
 			continue
+		}
+		if nickname[0] == "/exit" || nickname[0] == "exit" {
+			handleExit(cfg)
 		}
 		if len(nickname[0]) < 4 && len(nickname[0]) > 20 {
 			fmt.Println("nickname must be from 4 to 20 characters in length")
@@ -339,6 +342,9 @@ func getRegisterDetails() (string, string) {
 			fmt.Println("you have not entered a password")
 			continue
 		}
+		if password[0] == "/exit" || password[0] == "exit" {
+			handleExit(cfg)
+		}
 		if len(password[0]) < 6 {
 			fmt.Println("password must be longer than 6 characters")
 			continue
@@ -348,7 +354,7 @@ func getRegisterDetails() (string, string) {
 	}
 }
 
-func getLoginDetails() (string, string) {
+func getLoginDetails(cfg *config) (string, string) {
 	for {
 		fmt.Println()
 		nickname := getInput("Enter a nickname")
@@ -356,12 +362,18 @@ func getLoginDetails() (string, string) {
 			fmt.Println("you have not entered a nickname")
 			continue
 		}
+		if nickname[0] == "/exit" || nickname[0] == "exit" {
+			handleExit(cfg)
+		}
 
 		fmt.Println()
 		password := getInput("Enter a password")
 		if len(password) == 0 {
 			fmt.Println("you have not entered a password")
 			continue
+		}
+		if password[0] == "/exit" || password[0] == "exit" {
+			handleExit(cfg)
 		}
 
 		return nickname[0], password[0]

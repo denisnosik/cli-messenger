@@ -19,7 +19,8 @@ type wsMessage struct {
 }
 
 func (c *Client) connectToChat(chatID uuid.UUID, token string) error {
-	wsURL := fmt.Sprintf("ws://localhost:8080/api/chats/ws?chat_id=%s&token=%s", chatID, url.QueryEscape(token))
+	cutPrefixURL, _ := strings.CutPrefix(baseURL, "http://")
+	wsURL := fmt.Sprintf("ws://%s/api/chats/ws?chat_id=%s&token=%s", cutPrefixURL, chatID, url.QueryEscape(token))
 
 	conn, _, err := websocket.DefaultDialer.Dial(wsURL, nil)
 	if err != nil {
