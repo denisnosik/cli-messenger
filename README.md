@@ -8,9 +8,10 @@ The backend uses a simple modular structure with JWT authentication. All databas
 
 The application runs in a containerized environment using Docker and Docker Compose. A terminal client is used to interact with the server, supporting chat history, notifications, and real-time message delivery.
 
+The chat system is built using concurrent goroutines for reading and writing, with all state changes managed exclusively through channels.
+
 ## Motivation
-I built this project to explore how real-time communication works between multiple CLI clients under the hood. 
-I was interested in understanding how messages are delivered, processed, and displayed.
+I built this application because I wanted a fast, lightweight way to communicate with another person through CLI terminals.
 
 ## Features
 
