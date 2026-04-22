@@ -44,7 +44,7 @@ func Run() {
 
 	mux := http.NewServeMux()
 
-	mux.HandleFunc("POST /api/users", apiCfg.handlerCreateUser)
+	mux.HandleFunc("POST /api/register", apiCfg.handlerCreateUser)
 	mux.HandleFunc("POST /api/login", apiCfg.handlerLoginUser)
 
 	mux.HandleFunc("POST /api/chats", apiCfg.middlewareAuth(apiCfg.handlerChat))

@@ -25,7 +25,7 @@ func (c *Client) register(nickname, password string) (*registerResponse, error) 
 		return nil, err
 	}
 
-	req, err := http.NewRequest("POST", baseURL+"/api/users", bytes.NewBuffer(body))
+	req, err := http.NewRequest("POST", baseURL+"/api/register", bytes.NewBuffer(body))
 	if err != nil {
 		return nil, fmt.Errorf("request failed: %w", err)
 	}
