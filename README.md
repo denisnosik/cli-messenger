@@ -7,8 +7,6 @@ The backend uses a simple modular structure with JWT authentication. All databas
 
 The application runs in a containerized environment using Docker and Docker Compose. A terminal client is used to interact with the server, supporting chat history, notifications, and real-time message delivery.
 
-This project focuses on backend development, real-time communication, and practical system design.
-
 ## Features
 
 - [JWT](https://github.com/golang-jwt/jwt)-based authentication
