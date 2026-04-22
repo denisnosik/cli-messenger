@@ -7,6 +7,10 @@ The backend uses a simple modular structure with JWT authentication. All databas
 
 The application runs in a containerized environment using Docker and Docker Compose. A terminal client is used to interact with the server, supporting chat history, notifications, and real-time message delivery.
 
+## Motivation
+I built this project to explore how real-time communication works under the hood, specifically in a terminal environment. 
+I was interested in understanding how messages are delivered, processed, and displayed between multiple CLI clients.
+
 ## Features
 
 - [JWT](https://github.com/golang-jwt/jwt)-based authentication
@@ -27,7 +31,7 @@ The application runs in a containerized environment using Docker and Docker Comp
 - [Docker](https://www.docker.com/) 
 - [Go 1.25+](https://golang.org/) (for running the client)
 
-## Installation
+## Quick Start
 
 1. Clone and cd to the repository.
 ```bash
@@ -107,6 +111,11 @@ To open a chat, use the command
 > chat <nickname>
 ```
 After that, everything you type in the terminal will be delivered to your friend.
+
+## Contributing
+Contributions are always welcome!
+
+If you have suggestions, ideas, or find any issues, feel free to open an issue or submit a pull request.
 
 ## API
 
