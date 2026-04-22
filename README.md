@@ -1,5 +1,6 @@
 
-# Terminal-Based Messaging System
+# CLI-Messenger
+Terminal-Based Messaging System
 
 This project is a real-time messaging application built in Go, featuring JWT-based authentication and WebSocket communication. It allows users to register, log in, manage friends, and exchange messages in real time.
 
