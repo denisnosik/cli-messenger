@@ -124,8 +124,6 @@ func (cfg *apiConfig) handlerChatWS(w http.ResponseWriter, r *http.Request) {
 			})
 			client.send <- payload
 		}
-
-		client.send <- []byte("-------------------------")
 	}
 
 	go client.writeToClient()

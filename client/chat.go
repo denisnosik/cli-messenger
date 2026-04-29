@@ -8,6 +8,7 @@ import (
 	"sync"
 	"time"
 
+	tea "github.com/charmbracelet/bubbletea"
 	"github.com/google/uuid"
 	"github.com/gorilla/websocket"
 )
@@ -17,6 +18,15 @@ type wsMessage struct {
 	CreatedAt time.Time `json:"created_at"`
 	Content   string    `json:"content"`
 }
+
+type model struct {
+	messages []string
+	input    string
+	msgChan  chan wsMessage
+	conn     *websocket.Conn
+}
+
+type incomingMsg wsMessage
 
 func (c *Client) connectToChat(chatID uuid.UUID, token string) error {
 	cutPrefixURL, _ := strings.CutPrefix(baseURL, "http://")
@@ -29,6 +39,8 @@ func (c *Client) connectToChat(chatID uuid.UUID, token string) error {
 	}
 	defer conn.Close()
 
+	msgChan := make(chan wsMessage)
+
 	done := make(chan struct{})
 	closeOnce := sync.Once{}
 
@@ -36,27 +48,37 @@ func (c *Client) connectToChat(chatID uuid.UUID, token string) error {
 		closeOnce.Do(func() { close(done) })
 	}
 
-	// reader for msgs
+	// messages reader
 	go func() {
 		defer closeDone()
 
 		for {
 			_, msg, err := conn.ReadMessage()
 			if err != nil {
-				fmt.Println("\nDisconnected from chat")
+				msgChan <- wsMessage{Content: "Disconnected"}
 				return
 			}
+
 			wsMsg := wsMessage{}
 			if err := json.Unmarshal(msg, &wsMsg); err != nil {
-				fmt.Printf("\n%s\n", string(msg))
+				msgChan <- wsMessage{Content: string(msg)}
 				continue
 			}
 
-			fmt.Printf("\n[%s] [%s] %s\n", wsMsg.CreatedAt.Format("02 Jan 15:04"), wsMsg.Nickname, wsMsg.Content)
+			msgChan <- wsMsg
 		}
 	}()
 
-	fmt.Println("Connected! Type your message (or '/exit' to leave):")
+	m := model{
+		msgChan: msgChan,
+		conn:    conn,
+	}
+
+	p := tea.NewProgram(m)
+
+	if _, err := p.Run(); err != nil {
+		return err
+	}
 
 	// throttle markAsRead
 	go func() {
@@ -72,39 +94,71 @@ func (c *Client) connectToChat(chatID uuid.UUID, token string) error {
 		}
 	}()
 
-	// main write and send
-	for {
-		select {
-		case <-done:
-			return nil
-		default:
-		}
-
-		line, err := rl.Readline()
-		if err != nil {
-			break
-		}
-
-		text := strings.TrimSpace(line)
-		if text == "/exit" {
-			closeDone()
-			break
-		}
-		if text == "" {
-			continue
-		}
-
-		err = conn.WriteMessage(websocket.TextMessage, []byte(text))
-		if err != nil {
-			fmt.Println("Couldn't send message:", err)
-			break
-		}
-	}
-
-	err = conn.WriteMessage(websocket.CloseMessage, websocket.FormatCloseMessage(websocket.CloseNormalClosure, ""))
-	if err != nil {
-		fmt.Println("Couldn't close message:", err)
-		return err
-	}
 	return nil
+}
+
+func (m model) Init() tea.Cmd {
+	return waitForMessage(m.msgChan)
+}
+
+func (m model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
+	switch msg := msg.(type) {
+
+	case incomingMsg:
+		formatted := fmt.Sprintf("[%s] [%s] %s",
+			msg.CreatedAt.Format("02 Jan 15:04"),
+			msg.Nickname,
+			msg.Content,
+		)
+		m.messages = append(m.messages, formatted)
+
+		return m, waitForMessage(m.msgChan)
+
+	case tea.KeyMsg:
+		switch msg.String() {
+		case "enter":
+			if m.input != "" {
+				m.conn.WriteMessage(websocket.TextMessage, []byte(m.input))
+				formatted := fmt.Sprintf("[%s] [You] %s",
+					time.Now().Format("02 Jan 15:04"),
+					m.input,
+				)
+				m.messages = append(m.messages, formatted)
+				m.input = ""
+			}
+
+		case "backspace":
+			if len(m.input) > 0 {
+				m.input = m.input[:len(m.input)-1]
+			}
+
+		case "ctrl+c", "esc":
+			return m, tea.Quit
+
+		default:
+			if len(msg.String()) == 1 {
+				m.input += msg.String()
+			}
+		}
+	}
+
+	return m, nil
+}
+
+func (m model) View() string {
+	var b strings.Builder
+
+	for _, msg := range m.messages {
+		b.WriteString(msg + "\n")
+	}
+
+	b.WriteString("\n> " + m.input)
+
+	return b.String()
+}
+
+func waitForMessage(ch chan wsMessage) tea.Cmd {
+	return func() tea.Msg {
+		return incomingMsg(<-ch)
+	}
 }
