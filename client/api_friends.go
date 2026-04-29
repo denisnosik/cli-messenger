@@ -36,7 +36,7 @@ func (c *Client) sendFriendRequest(targetNickname string, token string) (*friend
 
 	res, err := c.httpClient.Do(req)
 	if err != nil {
-		return nil, fmt.Errorf("request failed: %w", err)
+		return nil, fmt.Errorf("server is unavailable")
 	}
 	defer res.Body.Close()
 
@@ -95,7 +95,7 @@ func (c *Client) deleteFriendship(targetNickname string, token string) error {
 
 	res, err := c.httpClient.Do(req)
 	if err != nil {
-		return fmt.Errorf("request failed: %w", err)
+		return fmt.Errorf("server is unavailable")
 	}
 	defer res.Body.Close()
 
