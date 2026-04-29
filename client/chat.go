@@ -79,6 +79,7 @@ func (c *Client) connectToChat(chatID uuid.UUID, token string) error {
 			return nil
 		default:
 		}
+
 		line, err := rl.Readline()
 		if err != nil {
 			break

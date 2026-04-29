@@ -99,7 +99,7 @@ func (cfg *apiConfig) handlerChatWS(w http.ResponseWriter, r *http.Request) {
 
 	messages, err := cfg.db.GetMessagesByChat(context.Background(), database.GetMessagesByChatParams{
 		ChatID: parsedChatID,
-		Limit:  50, // last 50 msgs
+		Limit:  50, // for chat history, loads last 50 msgs
 	})
 	if err != nil {
 		respondWithError(w, http.StatusInternalServerError, "Couldn't get messages from db", err)
