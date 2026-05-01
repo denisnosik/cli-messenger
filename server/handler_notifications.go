@@ -22,7 +22,7 @@ type notificationsResponse struct {
 }
 
 func (cfg *apiConfig) handlerNotifications(w http.ResponseWriter, r *http.Request) {
-	currentUserID := r.Context().Value("currentUserID").(uuid.UUID)
+	currentUserID := r.Context().Value(contextKeyUserID).(uuid.UUID)
 
 	dbUnreadMessages, err := cfg.db.GetUnreadMessages(r.Context(), currentUserID)
 	if err != nil {

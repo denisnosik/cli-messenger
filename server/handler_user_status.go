@@ -7,14 +7,14 @@ import (
 )
 
 func (cfg *apiConfig) handlerSetOnline(w http.ResponseWriter, r *http.Request) {
-	currentUserID := r.Context().Value("currentUserID").(uuid.UUID)
+	currentUserID := r.Context().Value(contextKeyUserID).(uuid.UUID)
 
 	cfg.hub.SetOnline(currentUserID)
 	w.WriteHeader(http.StatusNoContent)
 }
 
 func (cfg *apiConfig) handlerSetOffline(w http.ResponseWriter, r *http.Request) {
-	currentUserID := r.Context().Value("currentUserID").(uuid.UUID)
+	currentUserID := r.Context().Value(contextKeyUserID).(uuid.UUID)
 
 	cfg.hub.SetOffline(currentUserID)
 	w.WriteHeader(http.StatusNoContent)

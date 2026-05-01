@@ -18,7 +18,7 @@ func (cfg *apiConfig) handlerChat(w http.ResponseWriter, r *http.Request) {
 		TargetNickname string `json:"target_nickname"`
 	}
 
-	currentUserID := r.Context().Value("currentUserID").(uuid.UUID)
+	currentUserID := r.Context().Value(contextKeyUserID).(uuid.UUID)
 
 	decoder := json.NewDecoder(r.Body)
 	params := parameters{}

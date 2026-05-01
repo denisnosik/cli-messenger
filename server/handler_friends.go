@@ -22,7 +22,7 @@ func (cfg *apiConfig) handlerFriends(w http.ResponseWriter, r *http.Request) {
 		TargetNickname string `json:"target_nickname"`
 	}
 
-	currentUserID := r.Context().Value("currentUserID").(uuid.UUID)
+	currentUserID := r.Context().Value(contextKeyUserID).(uuid.UUID)
 
 	decoder := json.NewDecoder(r.Body)
 	params := parameters{}
@@ -98,7 +98,7 @@ func (cfg *apiConfig) handlerFriends(w http.ResponseWriter, r *http.Request) {
 }
 
 func (cfg *apiConfig) handlerGetFriends(w http.ResponseWriter, r *http.Request) {
-	currentUserID := r.Context().Value("currentUserID").(uuid.UUID)
+	currentUserID := r.Context().Value(contextKeyUserID).(uuid.UUID)
 
 	friends, err := cfg.db.GetAllFriendsForUser(r.Context(), currentUserID)
 	if err != nil {
@@ -133,7 +133,7 @@ func (cfg *apiConfig) handlerDeleteFriend(w http.ResponseWriter, r *http.Request
 		TargetNickname string `json:"target_nickname"`
 	}
 
-	currentUserID := r.Context().Value("currentUserID").(uuid.UUID)
+	currentUserID := r.Context().Value(contextKeyUserID).(uuid.UUID)
 
 	decoder := json.NewDecoder(r.Body)
 	params := parameters{}

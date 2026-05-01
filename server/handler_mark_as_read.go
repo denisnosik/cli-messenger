@@ -20,7 +20,7 @@ func (cfg *apiConfig) handlerMarkAsRead(w http.ResponseWriter, r *http.Request) 
 		return
 	}
 
-	currentUserID := r.Context().Value("currentUserID").(uuid.UUID)
+	currentUserID := r.Context().Value(contextKeyUserID).(uuid.UUID)
 
 	_, err = cfg.db.GetChatMember(r.Context(), database.GetChatMemberParams{
 		ChatID: parsedChatID,

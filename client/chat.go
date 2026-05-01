@@ -123,7 +123,7 @@ func (m model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		case "enter":
 			if m.input != "" {
 				if err := m.conn.WriteMessage(websocket.TextMessage, []byte(m.input)); err != nil {
-					m.err = fmt.Errorf("Couldn't send message: %w", err)
+					m.err = fmt.Errorf("couldn't send message: %w", err)
 					return m, nil
 				}
 				formatted := fmt.Sprintf("[%s] [You] %s",

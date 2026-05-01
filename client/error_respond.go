@@ -13,7 +13,7 @@ func parseErrorResponse(res *http.Response) error {
 
 	decoder := json.NewDecoder(res.Body)
 	if err := decoder.Decode(&errResponse); err != nil {
-		return fmt.Errorf("Couldn't decode: %w", err)
+		return fmt.Errorf("couldn't decode: %w", err)
 	}
 
 	if errResponse.Error != "" {
