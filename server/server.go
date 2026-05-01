@@ -19,10 +19,6 @@ type apiConfig struct {
 	hub    *Hub
 }
 
-type contextKey string
-
-const contextKeyUserID contextKey = "currentUserID"
-
 func Run() {
 	if err := godotenv.Load(); err != nil {
 		log.Fatalf("Couldn't load .env: %v", err)
