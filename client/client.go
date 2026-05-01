@@ -53,7 +53,9 @@ func Run() {
 	go func() {
 		<-c
 		if cfg.currentUser.Token != "" {
-			cfg.client.setOffline(cfg.currentUser.Token)
+			if err := cfg.client.setOffline(cfg.currentUser.Token); err != nil {
+				fmt.Printf("Couldn't set user offline. %v\n", err)
+			}
 		}
 		os.Exit(0)
 	}()
@@ -167,7 +169,10 @@ func handleChat(cfg *config, input []string) {
 		return
 	}
 
-	cfg.client.connectToChat(result.ChatID, cfg.currentUser.Token)
+	if err := cfg.client.connectToChat(result.ChatID, cfg.currentUser.Token); err != nil {
+		fmt.Printf("Couldn't connect to chat. %v\n", err)
+		return
+	}
 }
 
 func handleFriends(cfg *config, input []string) {
@@ -268,9 +273,13 @@ func handleExit(cfg *config) {
 	fmt.Println("Closing the messenger... Goodbye!")
 	fmt.Println()
 	if cfg.currentUser.Token != "" {
-		cfg.client.setOffline(cfg.currentUser.Token)
+		if err := cfg.client.setOffline(cfg.currentUser.Token); err != nil {
+			fmt.Printf("Couldn't set user offline: %s\n", err)
+		}
 	}
-	rl.Close()
+	if err := rl.Close(); err != nil {
+		fmt.Printf("Couldn't close readline: %s\n", err)
+	}
 	os.Exit(0)
 }
 

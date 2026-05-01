@@ -18,7 +18,7 @@ type loginResponse struct {
 }
 
 func (c *Client) login(nickname, password string) (*loginResponse, error) {
-	body, err := json.Marshal(loginRequest{
+	body, err := json.Marshal(loginRequest{ /* #nosec G117 -- password is intentionally sent over TLS, hashed server-side with argon2id */
 		Nickname: nickname,
 		Password: password,
 	})

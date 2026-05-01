@@ -17,7 +17,7 @@ type registerResponse struct {
 }
 
 func (c *Client) register(nickname, password string) (*registerResponse, error) {
-	body, err := json.Marshal(registerRequest{
+	body, err := json.Marshal(registerRequest{ /* #nosec G117 -- password is intentionally sent over TLS, hashed server-side with argon2id */
 		Nickname: nickname,
 		Password: password,
 	})

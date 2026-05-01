@@ -138,24 +138,40 @@ func (c *Client) writeToClient() {
 	for {
 		select {
 		case msg, ok := <-c.send:
-			c.conn.SetWriteDeadline(time.Now().Add(writeWait))
+			if err := c.conn.SetWriteDeadline(time.Now().Add(writeWait)); err != nil {
+				log.Printf("error setting write deadline: %v", err)
+				return
+			}
 			if !ok {
-				c.conn.WriteMessage(websocket.CloseMessage, []byte{})
+				if err := c.conn.WriteMessage(websocket.CloseMessage, []byte{}); err != nil {
+					log.Printf("error write message: %v", err)
+					return
+				}
 				return
 			}
 
 			w, err := c.conn.NextWriter(websocket.TextMessage)
 			if err != nil {
+				log.Printf("error next writer: %v", err)
 				return
 			}
-			w.Write(msg)
+			_, err = w.Write(msg)
+			if err != nil {
+				log.Printf("error writing message: %v", err)
+				return
+			}
 
 			if err := w.Close(); err != nil {
+				log.Printf("error closing writer: %v", err)
 				return
 			}
 		case <-ticker.C:
-			c.conn.SetWriteDeadline(time.Now().Add(writeWait))
+			if err := c.conn.SetWriteDeadline(time.Now().Add(writeWait)); err != nil {
+				log.Printf("error setting write deadline: %v", err)
+				return
+			}
 			if err := c.conn.WriteMessage(websocket.PingMessage, nil); err != nil {
+				log.Printf("error write message: %v", err)
 				return
 			}
 		}
@@ -165,12 +181,24 @@ func (c *Client) writeToClient() {
 func (c *Client) readFromClient(cfg *apiConfig) {
 	defer func() {
 		c.hub.unregister <- c
-		c.conn.Close()
+		if err := c.conn.Close(); err != nil {
+			log.Printf("error closing websocket connection: %v", err)
+		}
 	}()
 
 	c.conn.SetReadLimit(maxMessageSize)
-	c.conn.SetReadDeadline(time.Now().Add(pongWait))
-	c.conn.SetPongHandler(func(string) error { c.conn.SetReadDeadline(time.Now().Add(pongWait)); return nil })
+
+	if err := c.conn.SetReadDeadline(time.Now().Add(pongWait)); err != nil {
+		log.Printf("error setting read deadline: %v", err)
+		return
+	}
+
+	c.conn.SetPongHandler(func(string) error {
+		if err := c.conn.SetReadDeadline(time.Now().Add(pongWait)); err != nil {
+			log.Printf("error setting read deadline in pong handler: %v", err)
+		}
+		return nil
+	})
 
 	for {
 		_, msg, err := c.conn.ReadMessage()

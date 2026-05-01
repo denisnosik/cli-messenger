@@ -3,6 +3,7 @@ package client
 import (
 	"encoding/json"
 	"fmt"
+	"log"
 	"net/url"
 	"strings"
 	"sync"
@@ -24,6 +25,7 @@ type model struct {
 	input    string
 	msgChan  chan wsMessage
 	conn     *websocket.Conn
+	err      error
 }
 
 type incomingMsg wsMessage
@@ -87,7 +89,9 @@ func (c *Client) connectToChat(chatID uuid.UUID, token string) error {
 		for {
 			select {
 			case <-ticker.C:
-				c.markAsRead(chatID, token)
+				if err := c.markAsRead(chatID, token); err != nil {
+					log.Printf("Couldn't mark as read: %v", err)
+				}
 			case <-done:
 				return
 			}
@@ -118,7 +122,10 @@ func (m model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		switch msg.String() {
 		case "enter":
 			if m.input != "" {
-				m.conn.WriteMessage(websocket.TextMessage, []byte(m.input))
+				if err := m.conn.WriteMessage(websocket.TextMessage, []byte(m.input)); err != nil {
+					m.err = fmt.Errorf("Couldn't send message: %w", err)
+					return m, nil
+				}
 				formatted := fmt.Sprintf("[%s] [You] %s",
 					time.Now().Format("02 Jan 15:04"),
 					m.input,
@@ -146,6 +153,10 @@ func (m model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 }
 
 func (m model) View() string {
+	if m.err != nil {
+		return m.err.Error()
+	}
+
 	var b strings.Builder
 
 	for _, msg := range m.messages {

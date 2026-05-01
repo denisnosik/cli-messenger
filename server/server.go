@@ -2,9 +2,11 @@ package server
 
 import (
 	"database/sql"
+	"errors"
 	"log"
 	"net/http"
 	"os"
+	"time"
 
 	"github.com/denisnosik/cli-messenger/internal/database"
 	"github.com/joho/godotenv"
@@ -18,7 +20,9 @@ type apiConfig struct {
 }
 
 func Run() {
-	godotenv.Load()
+	if err := godotenv.Load(); err != nil {
+		log.Fatalf("Couldn't load .env: %v", err)
+	}
 
 	dbURL := os.Getenv("DB_URL")
 	if dbURL == "" {
@@ -60,6 +64,13 @@ func Run() {
 	mux.HandleFunc("POST /api/online", apiCfg.middlewareAuth(apiCfg.handlerSetOnline))
 	mux.HandleFunc("POST /api/offline", apiCfg.middlewareAuth(apiCfg.handlerSetOffline))
 
-	server := &http.Server{Addr: ":8080", Handler: mux}
-	server.ListenAndServe()
+	server := &http.Server{
+		Addr:              ":8080",
+		Handler:           mux,
+		ReadHeaderTimeout: 3 * time.Second,
+	}
+
+	if err := server.ListenAndServe(); err != nil && !errors.Is(err, http.ErrServerClosed) {
+		log.Fatalf("Server error: %v", err)
+	}
 }
