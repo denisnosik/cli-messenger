@@ -148,6 +148,7 @@ func handleLogin(cfg *config) {
 	}
 	fmt.Println("==============================")
 	fmt.Printf("Login successful as %s\n", result.Nickname)
+	fmt.Printf("Hello, %s\n", result.Nickname)
 
 	handleNotifications(cfg)
 }
