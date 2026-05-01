@@ -1,4 +1,6 @@
 
+![ci badge](https://github.com/denisnosik/cli-messenger/actions/workflows/ci.yml/badge.svg)
+
 # CLI-Messenger
 Terminal-Based Messaging System
 
