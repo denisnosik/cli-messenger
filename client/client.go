@@ -163,6 +163,7 @@ func handleChat(cfg *config, input []string) {
 		fmt.Println("==============================")
 		return
 	}
+
 	targetNickname := input[1]
 	result, err := cfg.client.startChat(targetNickname, cfg.currentUser.Token)
 	if err != nil {
@@ -170,7 +171,7 @@ func handleChat(cfg *config, input []string) {
 		return
 	}
 
-	if err := cfg.client.connectToChat(result.ChatID, cfg.currentUser.Token); err != nil {
+	if err := cfg.client.connectToChat(result.ChatID, cfg.currentUser.Token, cfg.currentUser.Nickname); err != nil {
 		fmt.Printf("Couldn't connect to chat. %v\n", err)
 		return
 	}

@@ -9,7 +9,6 @@ import (
 	"time"
 
 	"github.com/denisnosik/cli-messenger/internal/database"
-	"github.com/joho/godotenv"
 	_ "github.com/lib/pq"
 )
 
@@ -20,10 +19,6 @@ type apiConfig struct {
 }
 
 func Run() {
-	if err := godotenv.Load(); err != nil {
-		log.Fatalf("Couldn't load .env: %v", err)
-	}
-
 	dbURL := os.Getenv("DB_URL")
 	if dbURL == "" {
 		log.Fatal("DB_URL must be set")

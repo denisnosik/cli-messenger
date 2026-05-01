@@ -1,15 +1,16 @@
 package client
 
 import (
+	"context"
 	"encoding/json"
 	"fmt"
 	"log"
 	"net/url"
 	"strings"
-	"sync"
 	"time"
 
 	tea "github.com/charmbracelet/bubbletea"
+	"github.com/charmbracelet/lipgloss"
 	"github.com/google/uuid"
 	"github.com/gorilla/websocket"
 )
@@ -21,16 +22,47 @@ type wsMessage struct {
 }
 
 type model struct {
-	messages []string
-	input    string
-	msgChan  chan wsMessage
-	conn     *websocket.Conn
-	err      error
+	messages        []string
+	input           string
+	msgChan         chan wsMessage
+	conn            *websocket.Conn
+	ctx             context.Context
+	currentNickname string
+	width           int
+	height          int
+	scrollOffset    int
+	msgBoxHeight    int
+	err             error
 }
+
+const maxInputLen = 150
+
+var (
+	containerStyle = lipgloss.NewStyle().
+			Padding(1, 2)
+
+	timeStyle = lipgloss.NewStyle().
+			Foreground(lipgloss.Color("245"))
+
+	nicknameStyle = lipgloss.NewStyle().
+			Foreground(lipgloss.Color("6")).
+			Bold(true)
+
+	youStyle = lipgloss.NewStyle().
+			Foreground(lipgloss.Color("2")).
+			Bold(true)
+
+	counterStyle = lipgloss.NewStyle().
+			Foreground(lipgloss.Color("245")).
+			Italic(true)
+
+	helpStyle = lipgloss.NewStyle().
+			Foreground(lipgloss.Color("245"))
+)
 
 type incomingMsg wsMessage
 
-func (c *Client) connectToChat(chatID uuid.UUID, token string) error {
+func (c *Client) connectToChat(chatID uuid.UUID, token string, currentNickname string) error {
 	cutPrefixURL, _ := strings.CutPrefix(baseURL, "http://")
 	wsURL := fmt.Sprintf("ws://%s/api/chats/ws?chat_id=%s&token=%s", cutPrefixURL, chatID, url.QueryEscape(token))
 
@@ -39,25 +71,29 @@ func (c *Client) connectToChat(chatID uuid.UUID, token string) error {
 		fmt.Println("Couldn't connect to chat:", err)
 		return err
 	}
-	defer conn.Close()
 
-	msgChan := make(chan wsMessage)
+	ctx, cancel := context.WithCancel(context.Background())
+	defer cancel()
 
-	done := make(chan struct{})
-	closeOnce := sync.Once{}
-
-	closeDone := func() {
-		closeOnce.Do(func() { close(done) })
-	}
+	msgChan := make(chan wsMessage, 50)
 
 	// messages reader
 	go func() {
-		defer closeDone()
+		defer cancel()
+
+		send := func(msg wsMessage) bool {
+			select {
+			case msgChan <- msg:
+				return true
+			case <-ctx.Done():
+				return false
+			}
+		}
 
 		for {
 			_, msg, err := conn.ReadMessage()
 			if err != nil {
-				msgChan <- wsMessage{Content: "Disconnected"}
+				send(wsMessage{Content: "Disconnected"})
 				return
 			}
 
@@ -67,20 +103,11 @@ func (c *Client) connectToChat(chatID uuid.UUID, token string) error {
 				continue
 			}
 
-			msgChan <- wsMsg
+			if !send(wsMsg) {
+				return
+			}
 		}
 	}()
-
-	m := model{
-		msgChan: msgChan,
-		conn:    conn,
-	}
-
-	p := tea.NewProgram(m)
-
-	if _, err := p.Run(); err != nil {
-		return err
-	}
 
 	// throttle markAsRead
 	go func() {
@@ -92,31 +119,56 @@ func (c *Client) connectToChat(chatID uuid.UUID, token string) error {
 				if err := c.markAsRead(chatID, token); err != nil {
 					log.Printf("Couldn't mark as read: %v", err)
 				}
-			case <-done:
+			case <-ctx.Done():
 				return
 			}
 		}
 	}()
 
+	m := model{
+		msgChan:         msgChan,
+		conn:            conn,
+		ctx:             ctx,
+		currentNickname: currentNickname,
+	}
+
+	p := tea.NewProgram(m, tea.WithAltScreen())
+
+	if _, err := p.Run(); err != nil {
+		return err
+	}
+
+	if err := conn.Close(); err != nil {
+		log.Printf("couldn't close connection: %v", err)
+	}
+
 	return nil
 }
 
 func (m model) Init() tea.Cmd {
-	return waitForMessage(m.msgChan)
+	return waitForMessage(m.ctx, m.msgChan)
 }
 
 func (m model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 	switch msg := msg.(type) {
 
-	case incomingMsg:
-		formatted := fmt.Sprintf("[%s] [%s] %s",
-			msg.CreatedAt.Format("02 Jan 15:04"),
-			msg.Nickname,
-			msg.Content,
-		)
-		m.messages = append(m.messages, formatted)
+	case tea.WindowSizeMsg:
+		m.width = msg.Width
+		m.height = msg.Height
 
-		return m, waitForMessage(m.msgChan)
+		const reservedLines = 7
+
+		m.msgBoxHeight = msg.Height - reservedLines
+		if m.msgBoxHeight < 3 {
+			m.msgBoxHeight = 3
+		}
+
+		return m, nil
+
+	case incomingMsg:
+		formatted := formatMessage(wsMessage(msg), m.currentNickname)
+		m.messages = append(m.messages, formatted)
+		return m, waitForMessage(m.ctx, m.msgChan)
 
 	case tea.KeyMsg:
 		switch msg.String() {
@@ -126,24 +178,38 @@ func (m model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 					m.err = fmt.Errorf("couldn't send message: %w", err)
 					return m, nil
 				}
-				formatted := fmt.Sprintf("[%s] [You] %s",
-					time.Now().Format("02 Jan 15:04"),
-					m.input,
-				)
+
+				formatted := formatMessage(wsMessage{
+					Nickname:  m.currentNickname,
+					CreatedAt: time.Now(),
+					Content:   m.input,
+				}, m.currentNickname)
+
 				m.messages = append(m.messages, formatted)
 				m.input = ""
 			}
 
 		case "backspace":
-			if len(m.input) > 0 {
-				m.input = m.input[:len(m.input)-1]
+			runes := []rune(m.input)
+			if len(runes) > 0 {
+				m.input = string(runes[:len(runes)-1])
+			}
+
+		case "up":
+			if m.scrollOffset < len(m.messages)-m.msgBoxHeight {
+				m.scrollOffset++
+			}
+
+		case "down":
+			if m.scrollOffset > 0 {
+				m.scrollOffset--
 			}
 
 		case "ctrl+c", "esc":
 			return m, tea.Quit
 
 		default:
-			if len(msg.String()) == 1 {
+			if len([]rune(m.input)) < maxInputLen && len(msg.String()) == 1 {
 				m.input += msg.String()
 			}
 		}
@@ -154,22 +220,117 @@ func (m model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 
 func (m model) View() string {
 	if m.err != nil {
-		return m.err.Error()
+		return lipgloss.NewStyle().
+			Foreground(lipgloss.Color("9")).
+			Bold(true).
+			Render("Error: " + m.err.Error())
 	}
 
-	var b strings.Builder
-
-	for _, msg := range m.messages {
-		b.WriteString(msg + "\n")
+	width := m.width
+	if width < 40 {
+		width = 80
 	}
 
-	b.WriteString("\n> " + m.input)
+	innerWidth := width - 8
 
-	return b.String()
+	const reservedLines = 7
+	msgBoxHeight := m.height - reservedLines
+	if msgBoxHeight < 3 {
+		msgBoxHeight = 3
+	}
+
+	total := len(m.messages)
+	end := total - m.scrollOffset
+	if end < 0 {
+		end = 0
+	}
+
+	start := end - msgBoxHeight
+	if start < 0 {
+		start = 0
+	}
+
+	visible := m.messages[start:end]
+
+	var msgBuilder strings.Builder
+	for _, msg := range visible {
+		msgBuilder.WriteString(msg + "\n")
+	}
+
+	msgs := msgBuilder.String()
+	if msgs == "" {
+		msgs = lipgloss.NewStyle().
+			Foreground(lipgloss.Color("245")).
+			Italic(true).
+			Render("No messages yet...")
+	}
+
+	scrollIndicator := ""
+	if m.scrollOffset > 0 {
+		scrollIndicator = lipgloss.NewStyle().
+			Foreground(lipgloss.Color("245")).
+			Render(fmt.Sprintf(" ↑ %d more", m.scrollOffset))
+	}
+
+	messagesBox := lipgloss.NewStyle().
+		Border(lipgloss.RoundedBorder()).
+		BorderForeground(lipgloss.Color("255")).
+		Padding(0, 1).
+		Width(innerWidth).
+		Height(msgBoxHeight).
+		Render(msgs)
+
+	counter := fmt.Sprintf("%d/%d", len([]rune(m.input)), maxInputLen)
+	counterLine := lipgloss.NewStyle().
+		Width(innerWidth - 2).
+		Align(lipgloss.Right).
+		Render(counterStyle.Render(counter))
+
+	inputBox := lipgloss.NewStyle().
+		Border(lipgloss.RoundedBorder()).
+		BorderForeground(lipgloss.Color("255")).
+		Padding(0, 1).
+		Width(innerWidth).
+		Render("> " + m.input + "█\n" + counterLine)
+
+	help := helpStyle.Render("enter — send  |  ↑↓ — scroll  |  esc/ctrl+c — quit")
+
+	return containerStyle.Render(
+		lipgloss.JoinVertical(lipgloss.Left,
+			messagesBox,
+			scrollIndicator,
+			"",
+			inputBox,
+			help,
+		),
+	)
 }
 
-func waitForMessage(ch chan wsMessage) tea.Cmd {
+func formatMessage(msg wsMessage, currentNickname string) string {
+	ts := timeStyle.Render("[" + msg.CreatedAt.Format("02 Jan 15:04") + "]")
+
+	isYou := msg.Nickname == currentNickname
+
+	var nick string
+	if isYou {
+		nick = youStyle.Render("[You]")
+	} else {
+		nick = nicknameStyle.Render("[" + msg.Nickname + "]")
+	}
+
+	return ts + " " + nick + " " + msg.Content
+}
+
+func waitForMessage(ctx context.Context, ch chan wsMessage) tea.Cmd {
 	return func() tea.Msg {
-		return incomingMsg(<-ch)
+		select {
+		case msg, ok := <-ch:
+			if !ok {
+				return nil
+			}
+			return incomingMsg(msg)
+		case <-ctx.Done():
+			return nil
+		}
 	}
 }
