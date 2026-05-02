@@ -21,7 +21,7 @@ type wsMessage struct {
 	Content   string    `json:"content"`
 }
 
-type model struct {
+type chatModel struct {
 	messages        []string
 	input           string
 	msgChan         chan wsMessage
@@ -38,25 +38,25 @@ type model struct {
 const maxInputLen = 150
 
 var (
-	containerStyle = lipgloss.NewStyle().
-			Padding(1, 2)
+	chatContainerStyle = lipgloss.NewStyle().
+				Padding(1, 2)
 
-	timeStyle = lipgloss.NewStyle().
+	chatTimeStyle = lipgloss.NewStyle().
 			Foreground(lipgloss.Color("245"))
 
-	nicknameStyle = lipgloss.NewStyle().
-			Foreground(lipgloss.Color("6")).
-			Bold(true)
+	chatNicknameStyle = lipgloss.NewStyle().
+				Foreground(lipgloss.Color("6")).
+				Bold(true)
 
-	youStyle = lipgloss.NewStyle().
+	chatYouStyle = lipgloss.NewStyle().
 			Foreground(lipgloss.Color("2")).
 			Bold(true)
 
-	counterStyle = lipgloss.NewStyle().
-			Foreground(lipgloss.Color("245")).
-			Italic(true)
+	chatCounterStyle = lipgloss.NewStyle().
+				Foreground(lipgloss.Color("245")).
+				Italic(true)
 
-	helpStyle = lipgloss.NewStyle().
+	chatHelpStyle = lipgloss.NewStyle().
 			Foreground(lipgloss.Color("245"))
 )
 
@@ -125,7 +125,7 @@ func (c *Client) connectToChat(chatID uuid.UUID, token string, currentNickname s
 		}
 	}()
 
-	m := model{
+	m := chatModel{
 		msgChan:         msgChan,
 		conn:            conn,
 		ctx:             ctx,
@@ -145,11 +145,11 @@ func (c *Client) connectToChat(chatID uuid.UUID, token string, currentNickname s
 	return nil
 }
 
-func (m model) Init() tea.Cmd {
+func (m chatModel) Init() tea.Cmd {
 	return waitForMessage(m.ctx, m.msgChan)
 }
 
-func (m model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
+func (m chatModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 	switch msg := msg.(type) {
 
 	case tea.WindowSizeMsg:
@@ -218,7 +218,7 @@ func (m model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 	return m, nil
 }
 
-func (m model) View() string {
+func (m chatModel) View() string {
 	if m.err != nil {
 		return lipgloss.NewStyle().
 			Foreground(lipgloss.Color("9")).
@@ -284,7 +284,7 @@ func (m model) View() string {
 	counterLine := lipgloss.NewStyle().
 		Width(innerWidth - 2).
 		Align(lipgloss.Right).
-		Render(counterStyle.Render(counter))
+		Render(chatCounterStyle.Render(counter))
 
 	inputBox := lipgloss.NewStyle().
 		Border(lipgloss.RoundedBorder()).
@@ -293,9 +293,9 @@ func (m model) View() string {
 		Width(innerWidth).
 		Render("> " + m.input + "█\n" + counterLine)
 
-	help := helpStyle.Render("enter — send  |  ↑↓ — scroll  |  esc/ctrl+c — quit")
+	help := chatHelpStyle.Render("enter — send  |  ↑↓ — scroll  |  esc/ctrl+c — quit")
 
-	return containerStyle.Render(
+	return chatContainerStyle.Render(
 		lipgloss.JoinVertical(lipgloss.Left,
 			messagesBox,
 			scrollIndicator,
@@ -307,15 +307,15 @@ func (m model) View() string {
 }
 
 func formatMessage(msg wsMessage, currentNickname string) string {
-	ts := timeStyle.Render("[" + msg.CreatedAt.Format("02 Jan 15:04") + "]")
+	ts := chatTimeStyle.Render("[" + msg.CreatedAt.Format("02 Jan 15:04") + "]")
 
 	isYou := msg.Nickname == currentNickname
 
 	var nick string
 	if isYou {
-		nick = youStyle.Render("[You]")
+		nick = chatYouStyle.Render("[You]")
 	} else {
-		nick = nicknameStyle.Render("[" + msg.Nickname + "]")
+		nick = chatNicknameStyle.Render("[" + msg.Nickname + "]")
 	}
 
 	return ts + " " + nick + " " + msg.Content
