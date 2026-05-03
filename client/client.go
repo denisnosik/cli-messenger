@@ -25,7 +25,7 @@ type CurrentUser struct {
 
 type config struct {
 	client      Client
-	currentUser CurrentUser
+	currentUser *CurrentUser
 }
 
 var rl *readline.Instance
@@ -43,7 +43,7 @@ func Run() {
 
 	cfg := &config{
 		client:      client,
-		currentUser: CurrentUser{},
+		currentUser: &CurrentUser{},
 	}
 
 	c := make(chan os.Signal, 1)
@@ -60,6 +60,9 @@ func Run() {
 
 	defer rl.Close()
 
+	// display all commands
+	handleHelp()
+
 	// repl
 	for {
 		input := getInput("Enter command")
@@ -70,9 +73,10 @@ func Run() {
 		command := input[0]
 		switch command {
 		case "register":
-			handleRegister(cfg)
+			startAuth(cfg, modeRegister)
+			//handleRegister(cfg)
 		case "login":
-			startAuth(cfg)
+			startAuth(cfg, modeLogin)
 			//handleLogin(cfg)
 		case "chat":
 			if isAuthenticated(cfg) {

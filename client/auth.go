@@ -10,14 +10,21 @@ import (
 )
 
 type authStep int
+type authMode int
 
 const (
 	stepNickname authStep = iota
 	stepPassword
 )
 
+const (
+	modeLogin authMode = iota
+	modeRegister
+)
+
 type authModel struct {
 	cfg      *config
+	mode     authMode
 	step     authStep
 	nickname string
 	password string
@@ -27,6 +34,10 @@ type authModel struct {
 type loginSuccessMsg struct {
 	nickname string
 	token    string
+}
+
+type registerSuccessMsg struct {
+	nickname string
 }
 
 type loginErrMsg struct{ err error }
@@ -67,6 +78,10 @@ func (m authModel) Init() tea.Cmd {
 func (m authModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 	switch msg := msg.(type) {
 
+	case registerSuccessMsg:
+		m.err = nil
+		return m, tea.Quit
+
 	case loginSuccessMsg:
 		m.cfg.currentUser.Nickname = msg.nickname
 		m.cfg.currentUser.Token = msg.token
@@ -94,7 +109,11 @@ func (m authModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 					return m, nil
 				}
 
-				return m, m.doLogin
+				if m.mode == modeLogin {
+					return m, m.doLogin
+				}
+
+				return m, m.doRegister
 			}
 
 		case "backspace":
@@ -108,6 +127,13 @@ func (m authModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 				if len(runes) > 0 {
 					m.password = string(runes[:len(runes)-1])
 				}
+			}
+
+		case "ctrl+z":
+			if m.step == stepPassword {
+				m.step = stepNickname
+				m.password = ""
+				m.err = nil
 			}
 
 		default:
@@ -128,8 +154,30 @@ func (m authModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 func (m authModel) View() string {
 	var b strings.Builder
 
+	logo := `
+██████╗ ███████╗██████╗  █████╗ 
+██╔══██╗██╔════╝██╔══██╗██╔══██╗
+██║  ██║█████╗  ██║  ██║███████║
+██║  ██║██╔══╝  ██║  ██║██╔══██║
+██████╔╝███████╗██████╔╝██║  ██║
+╚═════╝ ╚══════╝╚═════╝ ╚═╝  ╚═╝
+                                
+ ██████╗██╗  ██╗ █████╗ ████████╗
+██╔════╝██║  ██║██╔══██╗╚══██╔══╝
+██║     ███████║███████║   ██║   
+██║     ██╔══██║██╔══██║   ██║   
+╚██████╗██║  ██║██║  ██║   ██║   
+ ╚═════╝╚═╝  ╚═╝╚═╝  ╚═╝   ╚═╝                              
+	`
+
+	title := "Login"
+	if m.mode == modeRegister {
+		title = "Register"
+	}
+
 	b.WriteString("\n")
-	b.WriteString(authWelcomeStyle.Render("Welcome") + "\n\n")
+	b.WriteString(authWelcomeStyle.Render(logo) + "\n\n")
+	b.WriteString(authWelcomeStyle.Render(title) + "\n\n")
 
 	nicknameBox := ""
 	if m.step == stepNickname {
@@ -153,7 +201,7 @@ func (m authModel) View() string {
 		b.WriteString(authErrorStyle.Render(m.err.Error()) + "\n")
 	}
 
-	b.WriteString(authLabelStyle.Render("enter — next  |  esc — quit") + "\n")
+	b.WriteString(authLabelStyle.Render("enter — next  | ctrl+z back to login input | esc, ctrl+c — quit") + "\n")
 
 	return b.String()
 }
@@ -174,9 +222,25 @@ func (m authModel) doLogin() tea.Msg {
 	}
 }
 
-func startAuth(cfg *config) {
-	if _, err := tea.NewProgram(authModel{cfg: cfg}, tea.WithAltScreen()).Run(); err != nil {
+func (m authModel) doRegister() tea.Msg {
+	result, err := m.cfg.client.register(m.nickname, m.password)
+	if err != nil {
+		return loginErrMsg{fmt.Errorf("couldn't register")}
+	}
+
+	return registerSuccessMsg{nickname: result.Nickname}
+}
+
+func startAuth(cfg *config, mode authMode) {
+	if _, err := tea.NewProgram(authModel{cfg: cfg, mode: mode}, tea.WithAltScreen()).Run(); err != nil {
 		fmt.Println("Error running program:", err)
 		os.Exit(1)
 	}
+
+	if cfg.currentUser.Token != "" {
+		fmt.Println("==============================")
+		fmt.Printf("Login successful as %s\n", cfg.currentUser.Nickname)
+		handleNotifications(cfg)
+	}
+
 }
