@@ -74,7 +74,8 @@ func Run() {
 		case "register":
 			handleRegister(cfg)
 		case "login":
-			handleLogin(cfg)
+			startAuth(cfg)
+			//handleLogin(cfg)
 		case "chat":
 			if isAuthenticated(cfg) {
 				handleChat(cfg, input)
