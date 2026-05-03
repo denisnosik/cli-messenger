@@ -58,6 +58,20 @@ var (
 
 	chatHelpStyle = lipgloss.NewStyle().
 			Foreground(lipgloss.Color("245"))
+
+	chatMessageBoxStyle = lipgloss.NewStyle().
+				Border(lipgloss.RoundedBorder()).
+				BorderForeground(lipgloss.Color("255")).
+				Padding(0, 1)
+
+	chatInputBoxStyle = lipgloss.NewStyle().
+				Border(lipgloss.RoundedBorder()).
+				BorderForeground(lipgloss.Color("255")).
+				Padding(0, 1)
+
+	chatErrorStyle = lipgloss.NewStyle().
+			Foreground(lipgloss.Color("9")).
+			MarginLeft(2)
 )
 
 type incomingMsg wsMessage
@@ -99,7 +113,7 @@ func (c *Client) connectToChat(chatID uuid.UUID, token string, currentNickname s
 
 			wsMsg := wsMessage{}
 			if err := json.Unmarshal(msg, &wsMsg); err != nil {
-				msgChan <- wsMessage{Content: string(msg)}
+				send(wsMessage{Content: string(msg)})
 				continue
 			}
 
@@ -219,13 +233,6 @@ func (m chatModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 }
 
 func (m chatModel) View() string {
-	if m.err != nil {
-		return lipgloss.NewStyle().
-			Foreground(lipgloss.Color("9")).
-			Bold(true).
-			Render("Error: " + m.err.Error())
-	}
-
 	width := m.width
 	if width < 40 {
 		width = 80
@@ -272,10 +279,7 @@ func (m chatModel) View() string {
 			Render(fmt.Sprintf(" ↑ %d more", m.scrollOffset))
 	}
 
-	messagesBox := lipgloss.NewStyle().
-		Border(lipgloss.RoundedBorder()).
-		BorderForeground(lipgloss.Color("255")).
-		Padding(0, 1).
+	messagesBox := chatMessageBoxStyle.
 		Width(innerWidth).
 		Height(msgBoxHeight).
 		Render(msgs)
@@ -286,12 +290,13 @@ func (m chatModel) View() string {
 		Align(lipgloss.Right).
 		Render(chatCounterStyle.Render(counter))
 
-	inputBox := lipgloss.NewStyle().
-		Border(lipgloss.RoundedBorder()).
-		BorderForeground(lipgloss.Color("255")).
-		Padding(0, 1).
+	inputBox := chatInputBoxStyle.
 		Width(innerWidth).
 		Render("> " + m.input + "█\n" + counterLine)
+
+	if m.err != nil {
+		return chatErrorStyle.Render("Error: " + m.err.Error())
+	}
 
 	help := chatHelpStyle.Render("enter — send  |  ↑↓ — scroll  |  esc/ctrl+c — quit")
 

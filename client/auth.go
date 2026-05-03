@@ -32,6 +32,11 @@ type loginSuccessMsg struct {
 type loginErrMsg struct{ err error }
 
 var (
+	authWelcomeStyle = lipgloss.NewStyle().
+				MarginLeft(2).
+				Foreground(lipgloss.Color("2")).
+				Bold(true)
+
 	authLabelStyle = lipgloss.NewStyle().
 			Foreground(lipgloss.Color("245")).
 			MarginLeft(2)
@@ -49,6 +54,10 @@ var (
 				Padding(0, 1).
 				MarginLeft(2).
 				Width(40)
+
+	authErrorStyle = lipgloss.NewStyle().
+			Foreground(lipgloss.Color("9")).
+			MarginLeft(2)
 )
 
 func (m authModel) Init() tea.Cmd {
@@ -61,7 +70,7 @@ func (m authModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 	case loginSuccessMsg:
 		m.cfg.currentUser.Nickname = msg.nickname
 		m.cfg.currentUser.Token = msg.token
-		return m, tea.Quit // TODO: go to menu (appModel) instead
+		return m, tea.Quit
 
 	case loginErrMsg:
 		m.err = msg.err
@@ -120,7 +129,7 @@ func (m authModel) View() string {
 	var b strings.Builder
 
 	b.WriteString("\n")
-	b.WriteString(lipgloss.NewStyle().MarginLeft(2).Render("Welcome") + "\n\n")
+	b.WriteString(authWelcomeStyle.Render("Welcome") + "\n\n")
 
 	nicknameBox := ""
 	if m.step == stepNickname {
@@ -141,10 +150,7 @@ func (m authModel) View() string {
 	}
 
 	if m.err != nil {
-		b.WriteString(lipgloss.NewStyle().
-			Foreground(lipgloss.Color("9")).
-			MarginLeft(2).
-			Render(m.err.Error()) + "\n")
+		b.WriteString(authErrorStyle.Render(m.err.Error()) + "\n")
 	}
 
 	b.WriteString(authLabelStyle.Render("enter — next  |  esc — quit") + "\n")

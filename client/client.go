@@ -39,13 +39,11 @@ func init() {
 }
 
 func Run() {
-	timeout := 5 * time.Second
-	client := Client{httpClient: http.Client{Timeout: timeout}}
-	currentUser := CurrentUser{}
+	client := Client{httpClient: http.Client{Timeout: 5 * time.Second}}
 
 	cfg := &config{
 		client:      client,
-		currentUser: currentUser,
+		currentUser: CurrentUser{},
 	}
 
 	c := make(chan os.Signal, 1)
