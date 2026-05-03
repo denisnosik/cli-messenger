@@ -1,6 +1,6 @@
 package main
 
-import "github.com/denisnosik/cli-messenger/client"
+import "github.com/denisnosik/dedachat/client"
 
 func main() {
 	client.Run()

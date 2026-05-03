@@ -1,4 +1,4 @@
-module github.com/denisnosik/cli-messenger
+module github.com/denisnosik/dedachat
 
 go 1.25.0
 

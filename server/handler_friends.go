@@ -5,7 +5,7 @@ import (
 	"encoding/json"
 	"net/http"
 
-	"github.com/denisnosik/cli-messenger/internal/database"
+	"github.com/denisnosik/dedachat/internal/database"
 	"github.com/google/uuid"
 )
 

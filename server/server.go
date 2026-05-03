@@ -8,7 +8,7 @@ import (
 	"os"
 	"time"
 
-	"github.com/denisnosik/cli-messenger/internal/database"
+	"github.com/denisnosik/dedachat/internal/database"
 	_ "github.com/lib/pq"
 )
 

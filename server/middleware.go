@@ -4,7 +4,7 @@ import (
 	"context"
 	"net/http"
 
-	"github.com/denisnosik/cli-messenger/internal/auth"
+	"github.com/denisnosik/dedachat/internal/auth"
 )
 
 type contextKey string

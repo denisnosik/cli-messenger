@@ -7,8 +7,8 @@ import (
 	"net/http"
 	"time"
 
-	"github.com/denisnosik/cli-messenger/internal/auth"
-	"github.com/denisnosik/cli-messenger/internal/database"
+	"github.com/denisnosik/dedachat/internal/auth"
+	"github.com/denisnosik/dedachat/internal/database"
 	"github.com/google/uuid"
 	"github.com/gorilla/websocket"
 )
