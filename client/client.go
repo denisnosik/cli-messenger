@@ -82,6 +82,8 @@ func Run() {
 	// display all commands
 	handleHelp()
 
+	startApp()
+
 	// repl
 	for {
 		input := getInput("Enter command")
