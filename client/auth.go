@@ -2,7 +2,6 @@ package client
 
 import (
 	"fmt"
-	"os"
 	"strings"
 
 	tea "github.com/charmbracelet/bubbletea"
@@ -29,6 +28,10 @@ type authModel struct {
 	nickname string
 	password string
 	err      error
+}
+
+type switchToAuthMsg struct {
+	mode authMode
 }
 
 type loginSuccessMsg struct {
@@ -77,15 +80,6 @@ func (m authModel) Init() tea.Cmd {
 
 func (m authModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 	switch msg := msg.(type) {
-
-	case registerSuccessMsg:
-		m.err = nil
-		return m, tea.Quit
-
-	case loginSuccessMsg:
-		m.cfg.currentUser.Nickname = msg.nickname
-		m.cfg.currentUser.Token = msg.token
-		return m, tea.Quit
 
 	case loginErrMsg:
 		m.err = msg.err
@@ -213,18 +207,4 @@ func (m authModel) doRegister() tea.Msg {
 	}
 
 	return registerSuccessMsg{nickname: result.Nickname}
-}
-
-func startAuth(cfg *config, mode authMode) {
-	if _, err := tea.NewProgram(authModel{cfg: cfg, mode: mode}, tea.WithAltScreen()).Run(); err != nil {
-		fmt.Println("Error running program:", err)
-		os.Exit(1)
-	}
-
-	if cfg.currentUser.Token != "" {
-		fmt.Println("==============================")
-		fmt.Printf("Login successful as %s\n", cfg.currentUser.Nickname)
-		handleNotifications(cfg)
-	}
-
 }

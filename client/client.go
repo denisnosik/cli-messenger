@@ -5,11 +5,10 @@ import (
 	"net/http"
 	"os"
 	"os/signal"
-	"strings"
 	"syscall"
 	"time"
 
-	"github.com/chzyer/readline"
+	tea "github.com/charmbracelet/bubbletea"
 )
 
 const baseURL = "http://localhost:8080"
@@ -28,15 +27,22 @@ type config struct {
 	currentUser *CurrentUser
 }
 
-var rl *readline.Instance
-
-func init() {
-	var err error
-	rl, err = readline.New("> ")
-	if err != nil {
-		panic(err)
-	}
+type clientModel struct {
+	cfg     *config
+	current tea.Model
 }
+
+type switchToAppMsg struct{}
+
+// var rl *readline.Instance
+
+// func init() {
+// 	var err error
+// 	rl, err = readline.New("> ")
+// 	if err != nil {
+// 		panic(err)
+// 	}
+// }
 
 var logo = `
 ██████╗ ███████╗██████╗  █████╗ 
@@ -53,6 +59,69 @@ var logo = `
 ╚██████╗██║  ██║██║  ██║   ██║   
  ╚═════╝╚═╝  ╚═╝╚═╝  ╚═╝   ╚═╝ 
 	`
+
+func (m clientModel) Init() tea.Cmd {
+	return m.current.Init()
+}
+
+func (m clientModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
+	switch msg := msg.(type) {
+
+	case loginSuccessMsg:
+		m.current.(authModel).cfg.currentUser.Nickname = msg.nickname
+		m.current.(authModel).cfg.currentUser.Token = msg.token
+
+		next := appModel{
+			cfg: m.current.(authModel).cfg,
+		}
+
+		m.current = next
+		return m, next.Init()
+
+	case switchToAuthMsg:
+		next := authModel{
+			cfg:  m.current.(appModel).cfg,
+			mode: msg.mode,
+		}
+
+		m.current = next
+		return m, next.Init()
+
+	case switchToChatMsg:
+		conn, ctx, msgChan, err := m.current.(appModel).cfg.client.connectToChat(msg.chatID, msg.token, msg.currentNickname)
+		if err != nil {
+			// TODO!!!!
+			// m.current.(appModel).err = fmt.Errorf("error: %v", err)
+			return m, nil
+		}
+
+		next := chatModel{
+			msgChan:         msgChan,
+			conn:            conn,
+			ctx:             ctx,
+			currentNickname: msg.currentNickname,
+		}
+		m.current = next
+		return m, next.Init()
+
+	case switchToAppMsg:
+		if chat, ok := m.current.(chatModel); ok {
+			chat.conn.Close()
+		}
+
+		next := appModel{cfg: m.cfg}
+		m.current = next
+		return m, next.Init()
+	}
+
+	var cmd tea.Cmd
+	m.current, cmd = m.current.Update(msg)
+	return m, cmd
+}
+
+func (m clientModel) View() string {
+	return m.current.View()
+}
 
 func Run() {
 	client := Client{httpClient: http.Client{Timeout: 5 * time.Second}}
@@ -74,343 +143,349 @@ func Run() {
 		os.Exit(0)
 	}()
 
-	defer rl.Close()
+	p := tea.NewProgram(clientModel{current: appModel{cfg: cfg}}, tea.WithAltScreen())
+	_, err := p.Run()
+	if err != nil {
+		fmt.Println("Error:", err)
+		os.Exit(1)
+	}
+
+	//defer rl.Close()
 
 	// display logo
-	fmt.Println(logo)
+	//fmt.Println(logo)
 
 	// display all commands
-	handleHelp()
-
-	startApp()
+	//handleHelp()
 
 	// repl
-	for {
-		input := getInput("Enter command")
-		if len(input) == 0 {
-			continue
-		}
+	// for {
+	// 	input := getInput("Enter command")
+	// 	if len(input) == 0 {
+	// 		continue
+	// 	}
 
-		command := input[0]
-		switch command {
-		case "register":
-			startAuth(cfg, modeRegister)
-			//handleRegister(cfg)
-		case "login":
-			startAuth(cfg, modeLogin)
-			//handleLogin(cfg)
-		case "chat":
-			if isAuthenticated(cfg) {
-				handleChat(cfg, input)
-			}
-		case "friends":
-			if isAuthenticated(cfg) {
-				handleFriends(cfg, input)
-			}
-		case "notifications":
-			if isAuthenticated(cfg) {
-				handleNotifications(cfg)
-			}
-		case "help":
-			handleHelp()
-		case "exit":
-			handleExit(cfg)
-		case "/exit":
-			handleExit(cfg)
-		default:
-			fmt.Println("Invalid command.")
-			handleHelp()
-		}
-	}
+	// 	command := input[0]
+	// 	switch command {
+	// 	case "register":
+	// 		startAuth(cfg, modeRegister)
+	// 		//handleRegister(cfg)
+	// 	case "login":
+	// 		startAuth(cfg, modeLogin)
+	// 		startApp(cfg)
+	//handleLogin(cfg)
+	// case "chat":
+	// 	if isAuthenticated(cfg) {
+	// 		handleChat(cfg, input)
+	// 	}
+	// case "friends":
+	// 	if isAuthenticated(cfg) {
+	// 		handleFriends(cfg, input)
+	// 	}
+	// case "notifications":
+	// 	if isAuthenticated(cfg) {
+	// 		handleNotifications(cfg)
+	// 	}
+	// 	case "help":
+	// 		handleHelp()
+	// 	case "exit":
+	// 		handleExit(cfg)
+	// 	case "/exit":
+	// 		handleExit(cfg)
+	// 	default:
+	// 		fmt.Println("Invalid command.")
+	// 		handleHelp()
+	// 	}
+	// }
 }
 
-func getInput(msg string) []string {
-	if len(msg) > 0 {
-		fmt.Println(msg)
-	}
-	line, err := rl.Readline()
-	if err != nil {
-		return nil
-	}
-	line = strings.TrimSpace(line)
-	return strings.Fields(line)
-}
+// func getInput(msg string) []string {
+// 	if len(msg) > 0 {
+// 		fmt.Println(msg)
+// 	}
+// 	line, err := rl.Readline()
+// 	if err != nil {
+// 		return nil
+// 	}
+// 	line = strings.TrimSpace(line)
+// 	return strings.Fields(line)
+// }
 
-func isAuthenticated(cfg *config) bool {
-	if cfg.currentUser.Token == "" {
-		fmt.Println("You must be logged in first")
-		return false
-	}
-	return true
-}
+// func isAuthenticated(cfg *config) bool {
+// 	if cfg.currentUser.Token == "" {
+// 		fmt.Println("You must be logged in first")
+// 		return false
+// 	}
+// 	return true
+// }
 
-func handleRegister(cfg *config) {
-	nickname, password := getRegisterDetails(cfg)
-	result, err := cfg.client.register(nickname, password)
-	if err != nil {
-		fmt.Printf("Couldn't register. %v\n", err)
-		return
-	}
+// func handleRegister(cfg *config) {
+// 	nickname, password := getRegisterDetails(cfg)
+// 	result, err := cfg.client.register(nickname, password)
+// 	if err != nil {
+// 		fmt.Printf("Couldn't register. %v\n", err)
+// 		return
+// 	}
 
-	fmt.Printf("Registered as %s\n", result.Nickname)
-}
+// 	fmt.Printf("Registered as %s\n", result.Nickname)
+// }
 
-func handleLogin(cfg *config) {
-	nickname, password := getLoginDetails(cfg)
-	result, err := cfg.client.login(nickname, password)
-	if err != nil {
-		fmt.Printf("Couldn't login. %v\n", err)
-		return
-	}
+// func handleLogin(cfg *config) {
+// 	nickname, password := getLoginDetails(cfg)
+// 	result, err := cfg.client.login(nickname, password)
+// 	if err != nil {
+// 		fmt.Printf("Couldn't login. %v\n", err)
+// 		return
+// 	}
 
-	cfg.currentUser.Nickname = result.Nickname
-	cfg.currentUser.Token = result.Token
+// 	cfg.currentUser.Nickname = result.Nickname
+// 	cfg.currentUser.Token = result.Token
 
-	if err := cfg.client.setOnline(cfg.currentUser.Token); err != nil {
-		fmt.Println(err)
-		return
-	}
-	fmt.Println("==============================")
-	fmt.Printf("Login successful as %s\n", result.Nickname)
-	fmt.Printf("Hello, %s\n", result.Nickname)
+// 	if err := cfg.client.setOnline(cfg.currentUser.Token); err != nil {
+// 		fmt.Println(err)
+// 		return
+// 	}
+// 	fmt.Println("==============================")
+// 	fmt.Printf("Login successful as %s\n", result.Nickname)
+// 	fmt.Printf("Hello, %s\n", result.Nickname)
 
-	handleNotifications(cfg)
-}
+// 	handleNotifications(cfg)
+// }
 
-func handleChat(cfg *config, input []string) {
-	if len(input) < 2 {
-		fmt.Println("==============================")
-		fmt.Println("Invalid input. Usage:")
-		fmt.Println()
-		fmt.Printf("  %-30s %s\n", "chat <nickname>", "open chat with friend")
-		fmt.Println()
-		fmt.Println("==============================")
-		return
-	}
+// func handleChat(cfg *config, input []string) {
+// 	if len(input) < 2 {
+// 		fmt.Println("==============================")
+// 		fmt.Println("Invalid input. Usage:")
+// 		fmt.Println()
+// 		fmt.Printf("  %-30s %s\n", "chat <nickname>", "open chat with friend")
+// 		fmt.Println()
+// 		fmt.Println("==============================")
+// 		return
+// 	}
 
-	targetNickname := input[1]
-	result, err := cfg.client.startChat(targetNickname, cfg.currentUser.Token)
-	if err != nil {
-		fmt.Printf("Couldn't open chat. %v\n", err)
-		return
-	}
+// 	targetNickname := input[1]
+// 	result, err := cfg.client.startChat(targetNickname, cfg.currentUser.Token)
+// 	if err != nil {
+// 		fmt.Printf("Couldn't open chat. %v\n", err)
+// 		return
+// 	}
 
-	if err := cfg.client.connectToChat(result.ChatID, cfg.currentUser.Token, cfg.currentUser.Nickname); err != nil {
-		fmt.Printf("Couldn't connect to chat. %v\n", err)
-		return
-	}
-}
+// 	if err := cfg.client.connectToChat(result.ChatID, cfg.currentUser.Token, cfg.currentUser.Nickname); err != nil {
+// 		fmt.Printf("Couldn't connect to chat. %v\n", err)
+// 		return
+// 	}
+// }
 
-func handleFriends(cfg *config, input []string) {
-	if len(input) < 2 {
-		displayFriendsHelp()
-		return
-	}
+// func handleFriends(cfg *config, input []string) {
+// 	if len(input) < 2 {
+// 		displayFriendsHelp()
+// 		return
+// 	}
 
-	// args
-	switch input[1] {
-	case "--list":
-		displayFriendsList(cfg)
-		return
-	case "--delete":
-		if len(input) < 3 {
-			fmt.Println("==============================")
-			fmt.Println("Invalid input")
-			fmt.Printf("  %-30s %s\n", "friends --delete <nickname>", "remove friend")
-			fmt.Println("==============================")
-			return
-		}
+// 	// args
+// 	switch input[1] {
+// 	case "--list":
+// 		displayFriendsList(cfg)
+// 		return
+// 	case "--delete":
+// 		if len(input) < 3 {
+// 			fmt.Println("==============================")
+// 			fmt.Println("Invalid input")
+// 			fmt.Printf("  %-30s %s\n", "friends --delete <nickname>", "remove friend")
+// 			fmt.Println("==============================")
+// 			return
+// 		}
 
-		targetName := input[2]
+// 		targetName := input[2]
 
-		err := cfg.client.deleteFriendship(targetName, cfg.currentUser.Token)
-		if err != nil {
-			fmt.Println(err)
-			return
-		}
+// 		err := cfg.client.deleteFriendship(targetName, cfg.currentUser.Token)
+// 		if err != nil {
+// 			fmt.Println(err)
+// 			return
+// 		}
 
-		fmt.Printf("You have successfully removed %s from your friends list.\n", targetName)
-		return
-	case "--help":
-		displayFriendsHelp()
-		return
-	default:
-		targetNickname := input[1]
+// 		fmt.Printf("You have successfully removed %s from your friends list.\n", targetName)
+// 		return
+// 	case "--help":
+// 		displayFriendsHelp()
+// 		return
+// 	default:
+// 		targetNickname := input[1]
 
-		result, err := cfg.client.sendFriendRequest(targetNickname, cfg.currentUser.Token)
-		if err != nil {
-			fmt.Println(err)
-			return
-		}
+// 		result, err := cfg.client.sendFriendRequest(targetNickname, cfg.currentUser.Token)
+// 		if err != nil {
+// 			fmt.Println(err)
+// 			return
+// 		}
 
-		switch result.Status {
-		case "created":
-			fmt.Printf("Friend request successfully sent to %s.\n", targetNickname)
-			return
-		case "accepted":
-			fmt.Printf("You have successfully added %s as a friend.\n", targetNickname)
-			return
-		case "sent":
-			fmt.Printf("Friend request to %s already sent.\n", targetNickname)
-			return
-		case "friends":
-			fmt.Printf("You and %s are already friends.\n", targetNickname)
-			return
-		}
-	}
-}
+// 		switch result.Status {
+// 		case "created":
+// 			fmt.Printf("Friend request successfully sent to %s.\n", targetNickname)
+// 			return
+// 		case "accepted":
+// 			fmt.Printf("You have successfully added %s as a friend.\n", targetNickname)
+// 			return
+// 		case "sent":
+// 			fmt.Printf("Friend request to %s already sent.\n", targetNickname)
+// 			return
+// 		case "friends":
+// 			fmt.Printf("You and %s are already friends.\n", targetNickname)
+// 			return
+// 		}
+// 	}
+// }
 
-func handleNotifications(cfg *config) {
-	notifications, err := cfg.client.getNotifications(cfg.currentUser.Token)
-	if err != nil {
-		fmt.Printf("Couldn't get notifications. %v\n", err)
-		return
-	}
+// func handleNotifications(cfg *config) {
+// 	notifications, err := cfg.client.getNotifications(cfg.currentUser.Token)
+// 	if err != nil {
+// 		fmt.Printf("Couldn't get notifications. %v\n", err)
+// 		return
+// 	}
 
-	if len(notifications.UnreadMessages) == 0 && len(notifications.FriendRequests) == 0 {
-		fmt.Println()
-		fmt.Println("You have no notifications")
-		fmt.Println("==============================")
-		return
-	}
+// 	if len(notifications.UnreadMessages) == 0 && len(notifications.FriendRequests) == 0 {
+// 		fmt.Println()
+// 		fmt.Println("You have no notifications")
+// 		fmt.Println("==============================")
+// 		return
+// 	}
 
-	if len(notifications.UnreadMessages) > 0 {
-		fmt.Println()
-		for _, msg := range notifications.UnreadMessages {
-			fmt.Printf("You have %d unread messages from %s\n", msg.Count, msg.Nickname)
-		}
-	}
+// 	if len(notifications.UnreadMessages) > 0 {
+// 		fmt.Println()
+// 		for _, msg := range notifications.UnreadMessages {
+// 			fmt.Printf("You have %d unread messages from %s\n", msg.Count, msg.Nickname)
+// 		}
+// 	}
 
-	if len(notifications.FriendRequests) > 0 {
-		fmt.Println()
-		for _, f := range notifications.FriendRequests {
-			if f.SenderNickname == cfg.currentUser.Nickname {
-				fmt.Printf("Friend request to %s is pending\n", f.ReceiverNickname)
-			} else {
-				fmt.Printf("Friend request from %s\n", f.SenderNickname)
-			}
-		}
-	}
-	fmt.Println("==============================")
-}
+// 	if len(notifications.FriendRequests) > 0 {
+// 		fmt.Println()
+// 		for _, f := range notifications.FriendRequests {
+// 			if f.SenderNickname == cfg.currentUser.Nickname {
+// 				fmt.Printf("Friend request to %s is pending\n", f.ReceiverNickname)
+// 			} else {
+// 				fmt.Printf("Friend request from %s\n", f.SenderNickname)
+// 			}
+// 		}
+// 	}
+// 	fmt.Println("==============================")
+// }
 
-func handleExit(cfg *config) {
-	fmt.Println()
-	fmt.Println("Closing the messenger... Goodbye!")
-	fmt.Println()
-	if cfg.currentUser.Token != "" {
-		if err := cfg.client.setOffline(cfg.currentUser.Token); err != nil {
-			fmt.Printf("Couldn't set user offline: %s\n", err)
-		}
-	}
-	if err := rl.Close(); err != nil {
-		fmt.Printf("Couldn't close readline: %s\n", err)
-	}
-	os.Exit(0)
-}
+// func handleExit(cfg *config) {
+// 	fmt.Println()
+// 	fmt.Println("Closing the messenger... Goodbye!")
+// 	fmt.Println()
+// 	if cfg.currentUser.Token != "" {
+// 		if err := cfg.client.setOffline(cfg.currentUser.Token); err != nil {
+// 			fmt.Printf("Couldn't set user offline: %s\n", err)
+// 		}
+// 	}
+// 	if err := rl.Close(); err != nil {
+// 		fmt.Printf("Couldn't close readline: %s\n", err)
+// 	}
+// 	os.Exit(0)
+// }
 
-func handleHelp() {
-	fmt.Println("==============================")
-	fmt.Println()
-	fmt.Printf("  %-30s %s\n", "register", "create a new account")
-	fmt.Printf("  %-30s %s\n", "login", "sign in with your nickname and password")
-	fmt.Printf("  %-30s %s\n", "chat <nickname>", "open a chat with a friend")
-	fmt.Printf("  %-30s %s\n", "friends <nickname>", "send a friend request (friends --help for more)")
-	fmt.Printf("  %-30s %s\n", "notifications", "view unread messages and friend requests")
-	fmt.Printf("  %-30s %s\n", "help", "show available commands")
-	fmt.Printf("  %-30s %s\n", "exit", "quit the application")
-	fmt.Println()
-	fmt.Println("==============================")
-}
+// func handleHelp() {
+// 	fmt.Println("==============================")
+// 	fmt.Println()
+// 	fmt.Printf("  %-30s %s\n", "register", "create a new account")
+// 	fmt.Printf("  %-30s %s\n", "login", "sign in with your nickname and password")
+// 	fmt.Printf("  %-30s %s\n", "chat <nickname>", "open a chat with a friend")
+// 	fmt.Printf("  %-30s %s\n", "friends <nickname>", "send a friend request (friends --help for more)")
+// 	fmt.Printf("  %-30s %s\n", "notifications", "view unread messages and friend requests")
+// 	fmt.Printf("  %-30s %s\n", "help", "show available commands")
+// 	fmt.Printf("  %-30s %s\n", "exit", "quit the application")
+// 	fmt.Println()
+// 	fmt.Println("==============================")
+// }
 
-func displayFriendsHelp() {
-	fmt.Println("==============================")
-	fmt.Println("Invalid input. Usage:")
-	fmt.Println()
-	fmt.Printf("  %-30s %s\n", "friends <nickname>", "send friend request")
-	fmt.Printf("  %-30s %s\n", "friends --list", "show all friends")
-	fmt.Printf("  %-30s %s\n", "friends --delete <nickname>", "remove friend")
-	fmt.Printf("  %-30s %s\n", "friends --help", "show available commands")
-	fmt.Println()
-	fmt.Println("==============================")
-}
+// func displayFriendsHelp() {
+// 	fmt.Println("==============================")
+// 	fmt.Println("Invalid input. Usage:")
+// 	fmt.Println()
+// 	fmt.Printf("  %-30s %s\n", "friends <nickname>", "send friend request")
+// 	fmt.Printf("  %-30s %s\n", "friends --list", "show all friends")
+// 	fmt.Printf("  %-30s %s\n", "friends --delete <nickname>", "remove friend")
+// 	fmt.Printf("  %-30s %s\n", "friends --help", "show available commands")
+// 	fmt.Println()
+// 	fmt.Println("==============================")
+// }
 
-func displayFriendsList(cfg *config) {
-	friends, err := cfg.client.getFriends(cfg.currentUser.Token)
-	if err != nil {
-		fmt.Println(err)
-		return
-	}
-	fmt.Println("==============================")
-	fmt.Println("Your friends:")
-	count := 1
-	for _, f := range friends {
-		status := "offline"
-		if f.Online {
-			status = "online"
-		}
-		fmt.Printf("%d.%-15s [%s]\n", count, f.Nickname, status)
-		count += 1
-	}
-	fmt.Println("==============================")
-}
+// func displayFriendsList(cfg *config) {
+// 	friends, err := cfg.client.getFriends(cfg.currentUser.Token)
+// 	if err != nil {
+// 		fmt.Println(err)
+// 		return
+// 	}
+// 	fmt.Println("==============================")
+// 	fmt.Println("Your friends:")
+// 	count := 1
+// 	for _, f := range friends {
+// 		status := "offline"
+// 		if f.Online {
+// 			status = "online"
+// 		}
+// 		fmt.Printf("%d.%-15s [%s]\n", count, f.Nickname, status)
+// 		count += 1
+// 	}
+// 	fmt.Println("==============================")
+// }
 
-func getRegisterDetails(cfg *config) (string, string) {
-	for {
-		fmt.Println()
-		nickname := getInput("Enter a nickname")
-		if len(nickname) == 0 {
-			fmt.Println("you have not entered a nickname")
-			continue
-		}
-		if nickname[0] == "/exit" || nickname[0] == "exit" {
-			handleExit(cfg)
-		}
-		if len(nickname[0]) < 4 && len(nickname[0]) > 20 {
-			fmt.Println("nickname must be from 4 to 20 characters in length")
-			continue
-		}
+// func getRegisterDetails(cfg *config) (string, string) {
+// 	for {
+// 		fmt.Println()
+// 		nickname := getInput("Enter a nickname")
+// 		if len(nickname) == 0 {
+// 			fmt.Println("you have not entered a nickname")
+// 			continue
+// 		}
+// 		if nickname[0] == "/exit" || nickname[0] == "exit" {
+// 			handleExit(cfg)
+// 		}
+// 		if len(nickname[0]) < 4 && len(nickname[0]) > 20 {
+// 			fmt.Println("nickname must be from 4 to 20 characters in length")
+// 			continue
+// 		}
 
-		fmt.Println()
-		password := getInput("Enter a password")
-		if len(password) == 0 {
-			fmt.Println("you have not entered a password")
-			continue
-		}
-		if password[0] == "/exit" || password[0] == "exit" {
-			handleExit(cfg)
-		}
-		if len(password[0]) < 6 {
-			fmt.Println("password must be longer than 6 characters")
-			continue
-		}
+// 		fmt.Println()
+// 		password := getInput("Enter a password")
+// 		if len(password) == 0 {
+// 			fmt.Println("you have not entered a password")
+// 			continue
+// 		}
+// 		if password[0] == "/exit" || password[0] == "exit" {
+// 			handleExit(cfg)
+// 		}
+// 		if len(password[0]) < 6 {
+// 			fmt.Println("password must be longer than 6 characters")
+// 			continue
+// 		}
 
-		return nickname[0], password[0]
-	}
-}
+// 		return nickname[0], password[0]
+// 	}
+// }
 
-func getLoginDetails(cfg *config) (string, string) {
-	for {
-		fmt.Println()
-		nickname := getInput("Enter a nickname")
-		if len(nickname) == 0 {
-			fmt.Println("you have not entered a nickname")
-			continue
-		}
-		if nickname[0] == "/exit" || nickname[0] == "exit" {
-			handleExit(cfg)
-		}
+// func getLoginDetails(cfg *config) (string, string) {
+// 	for {
+// 		fmt.Println()
+// 		nickname := getInput("Enter a nickname")
+// 		if len(nickname) == 0 {
+// 			fmt.Println("you have not entered a nickname")
+// 			continue
+// 		}
+// 		if nickname[0] == "/exit" || nickname[0] == "exit" {
+// 			handleExit(cfg)
+// 		}
 
-		fmt.Println()
-		password := getInput("Enter a password")
-		if len(password) == 0 {
-			fmt.Println("you have not entered a password")
-			continue
-		}
-		if password[0] == "/exit" || password[0] == "exit" {
-			handleExit(cfg)
-		}
+// 		fmt.Println()
+// 		password := getInput("Enter a password")
+// 		if len(password) == 0 {
+// 			fmt.Println("you have not entered a password")
+// 			continue
+// 		}
+// 		if password[0] == "/exit" || password[0] == "exit" {
+// 			handleExit(cfg)
+// 		}
 
-		return nickname[0], password[0]
-	}
-}
+// 		return nickname[0], password[0]
+// 	}
+// }

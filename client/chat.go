@@ -35,6 +35,12 @@ type chatModel struct {
 	err             error
 }
 
+type switchToChatMsg struct {
+	chatID          uuid.UUID
+	token           string
+	currentNickname string
+}
+
 const maxInputLen = 150
 
 var (
@@ -75,89 +81,6 @@ var (
 )
 
 type incomingMsg wsMessage
-
-func (c *Client) connectToChat(chatID uuid.UUID, token string, currentNickname string) error {
-	cutPrefixURL, _ := strings.CutPrefix(baseURL, "http://")
-	wsURL := fmt.Sprintf("ws://%s/api/chats/ws?chat_id=%s&token=%s", cutPrefixURL, chatID, url.QueryEscape(token))
-
-	conn, _, err := websocket.DefaultDialer.Dial(wsURL, nil)
-	if err != nil {
-		fmt.Println("Couldn't connect to chat:", err)
-		return err
-	}
-
-	ctx, cancel := context.WithCancel(context.Background())
-	defer cancel()
-
-	msgChan := make(chan wsMessage, 50)
-
-	// messages reader
-	go func() {
-		defer cancel()
-
-		send := func(msg wsMessage) bool {
-			select {
-			case msgChan <- msg:
-				return true
-			case <-ctx.Done():
-				return false
-			}
-		}
-
-		for {
-			_, msg, err := conn.ReadMessage()
-			if err != nil {
-				send(wsMessage{Content: "Disconnected"})
-				return
-			}
-
-			wsMsg := wsMessage{}
-			if err := json.Unmarshal(msg, &wsMsg); err != nil {
-				send(wsMessage{Content: string(msg)})
-				continue
-			}
-
-			if !send(wsMsg) {
-				return
-			}
-		}
-	}()
-
-	// throttle markAsRead
-	go func() {
-		ticker := time.NewTicker(2 * time.Second)
-		defer ticker.Stop()
-		for {
-			select {
-			case <-ticker.C:
-				if err := c.markAsRead(chatID, token); err != nil {
-					log.Printf("Couldn't mark as read: %v", err)
-				}
-			case <-ctx.Done():
-				return
-			}
-		}
-	}()
-
-	m := chatModel{
-		msgChan:         msgChan,
-		conn:            conn,
-		ctx:             ctx,
-		currentNickname: currentNickname,
-	}
-
-	p := tea.NewProgram(m, tea.WithAltScreen())
-
-	if _, err := p.Run(); err != nil {
-		return err
-	}
-
-	if err := conn.Close(); err != nil {
-		log.Printf("couldn't close connection: %v", err)
-	}
-
-	return nil
-}
 
 func (m chatModel) Init() tea.Cmd {
 	return waitForMessage(m.ctx, m.msgChan)
@@ -220,7 +143,7 @@ func (m chatModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 			}
 
 		case "ctrl+c", "esc":
-			return m, tea.Quit
+			return m, func() tea.Msg { return switchToAppMsg{} }
 
 		default:
 			if len([]rune(m.input)) < maxInputLen && len(msg.String()) == 1 {
@@ -309,6 +232,88 @@ func (m chatModel) View() string {
 			help,
 		),
 	)
+}
+
+func (c *Client) connectToChat(chatID uuid.UUID, token string, currentNickname string) (*websocket.Conn, context.Context, chan wsMessage, error) {
+	cutPrefixURL, _ := strings.CutPrefix(baseURL, "http://")
+	wsURL := fmt.Sprintf("ws://%s/api/chats/ws?chat_id=%s&token=%s", cutPrefixURL, chatID, url.QueryEscape(token))
+
+	conn, _, err := websocket.DefaultDialer.Dial(wsURL, nil)
+	if err != nil {
+		return nil, nil, nil, err
+	}
+
+	ctx, cancel := context.WithCancel(context.Background())
+	defer cancel()
+
+	msgChan := make(chan wsMessage, 50)
+
+	// messages reader
+	go func() {
+		defer cancel()
+
+		send := func(msg wsMessage) bool {
+			select {
+			case msgChan <- msg:
+				return true
+			case <-ctx.Done():
+				return false
+			}
+		}
+
+		for {
+			_, msg, err := conn.ReadMessage()
+			if err != nil {
+				send(wsMessage{Content: "Disconnected"})
+				return
+			}
+
+			wsMsg := wsMessage{}
+			if err := json.Unmarshal(msg, &wsMsg); err != nil {
+				send(wsMessage{Content: string(msg)})
+				continue
+			}
+
+			if !send(wsMsg) {
+				return
+			}
+		}
+	}()
+
+	// throttle markAsRead
+	go func() {
+		ticker := time.NewTicker(2 * time.Second)
+		defer ticker.Stop()
+		for {
+			select {
+			case <-ticker.C:
+				if err := c.markAsRead(chatID, token); err != nil {
+					log.Printf("Couldn't mark as read: %v", err)
+				}
+			case <-ctx.Done():
+				return
+			}
+		}
+	}()
+
+	// m := chatModel{
+	// 	msgChan:         msgChan,
+	// 	conn:            conn,
+	// 	ctx:             ctx,
+	// 	currentNickname: currentNickname,
+	// }
+
+	// p := tea.NewProgram(m, tea.WithAltScreen())
+
+	// if _, err := p.Run(); err != nil {
+	// 	return err
+	// }
+
+	// if err := conn.Close(); err != nil {
+	// 	log.Printf("couldn't close connection: %v", err)
+	// }
+
+	return conn, ctx, msgChan, nil
 }
 
 func formatMessage(msg wsMessage, currentNickname string) string {
