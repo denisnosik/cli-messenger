@@ -10,11 +10,15 @@ import (
 )
 
 type appModel struct {
-	command string
-	err     error
+	input string
+	err   error
 }
 
-type commandList map[string]func(cfg *config)
+type command struct {
+	name        string
+	description string
+	callback    tea.Cmd
+}
 
 var (
 	appWelcomeStyle = lipgloss.NewStyle().
@@ -31,12 +35,12 @@ var (
 			Foreground(lipgloss.Color("245")).
 			MarginLeft(2)
 
-	appCommandInputStyle = lipgloss.NewStyle().
-				Border(lipgloss.RoundedBorder()).
-				BorderForeground(lipgloss.Color("255")).
-				Padding(0, 1).
-				MarginLeft(2).
-				Width(40)
+	appInputStyle = lipgloss.NewStyle().
+			Border(lipgloss.RoundedBorder()).
+			BorderForeground(lipgloss.Color("255")).
+			Padding(0, 1).
+			MarginLeft(2).
+			Width(40)
 )
 
 func (m appModel) Init() tea.Cmd {
@@ -58,14 +62,14 @@ func (m appModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		// 	return m, m.runCommand
 
 		case "backspace":
-			runes := []rune(m.command)
+			runes := []rune(m.input)
 			if len(runes) > 0 {
-				m.command = string(runes[:len(runes)-1])
+				m.input = string(runes[:len(runes)-1])
 			}
 		default:
 			m.err = nil
 			if len(msg.String()) == 1 {
-				m.command += msg.String()
+				m.input += msg.String()
 			}
 		}
 	}
@@ -79,12 +83,23 @@ func (m appModel) View() string {
 	b.WriteString("\n")
 	b.WriteString(appWelcomeStyle.Render(logo) + "\n\n")
 
-	b.WriteString(appCommandListStyle.Render())
+	b.WriteString(appLabelStyle.Render("Available commands") + "\n")
 
-	b.WriteString(appLabelStyle.Render("Enter command...") + "\n")
+	b.WriteString("\n")
 
-	commandBox := appCommandInputStyle.Render(m.command + "█")
-	b.WriteString(commandBox + "\n\n")
+	for _, command := range getCommands() {
+		b.WriteString(appCommandListStyle.Render(fmt.Sprintf("  %-30s %s", command.name, command.description)))
+		b.WriteString("\n")
+	}
+
+	b.WriteString("\n")
+
+	b.WriteString(appLabelStyle.Render("Enter command") + "\n")
+
+	inputBox := appInputStyle.Render("> " + m.input + "█")
+	b.WriteString(inputBox + "\n\n")
+
+	b.WriteString(appLabelStyle.Render("enter — submit  | esc, ctrl+c — quit") + "\n")
 
 	return b.String()
 }
@@ -93,6 +108,36 @@ func startApp() {
 	if _, err := tea.NewProgram(appModel{}, tea.WithAltScreen()).Run(); err != nil {
 		fmt.Println("Error running program:", err)
 		os.Exit(1)
+	}
+}
+
+func getCommands() []command {
+	return []command{
+		{
+			name:        "register",
+			description: "Create a new account",
+			//callback:    commandRegister,
+		},
+		{
+			name:        "login",
+			description: "Sign in with you nickname and password",
+			//callback:    commandLogin,
+		},
+		{
+			name:        "chat <nickname>",
+			description: "Open a chat with a friend",
+			//callback:    commandChat,
+		},
+		{
+			name:        "friends <nickname>",
+			description: "Send a friend request (> friends --help for more)",
+			//callback:    commandFriends,
+		},
+		{
+			name:        "notifications",
+			description: "View unread messages and friend requests",
+			//callback:    commandNotifications,
+		},
 	}
 }
 
