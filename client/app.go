@@ -23,6 +23,20 @@ type command struct {
 	callback    func(m appModel) (appModel, tea.Cmd)
 }
 
+type switchToAppMsg struct{}
+
+type friendsResultMsg struct {
+	output string
+}
+type friendsErrMsg struct {
+	err error
+}
+
+type notificationsResultMsg struct {
+	messages []string
+	friends  []string
+}
+
 type appErrMsg struct{ err error }
 
 var (
@@ -67,6 +81,24 @@ func (m appModel) Init() tea.Cmd {
 
 func (m appModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 	switch msg := msg.(type) {
+
+	case friendsResultMsg:
+		m.output = msg.output
+		return m, nil
+
+	case notificationsResultMsg:
+		if len(msg.messages) == 0 && len(msg.friends) == 0 {
+			m.output = "no notifications"
+			return m, nil
+		}
+		m.notifMessages = msg.messages
+		m.notifFriends = msg.friends
+		return m, nil
+
+	case appErrMsg:
+		m.err = msg.err
+		return m, nil
+
 	case tea.KeyMsg:
 		switch msg.String() {
 		case "ctrl+c", "esc":
@@ -179,7 +211,7 @@ func commandChat(m appModel) (appModel, tea.Cmd) {
 		return m, nil
 	}
 
-	cleanedInput := strings.Fields(strings.ToLower(m.input))
+	cleanedInput := strings.Fields(m.input)
 	if len(cleanedInput) < 2 {
 		m.err = fmt.Errorf("usage: chat <nickname>")
 		return m, nil
@@ -207,56 +239,51 @@ func commandFriends(m appModel) (appModel, tea.Cmd) {
 		return m, nil
 	}
 
-	cleanedInput := strings.Fields(strings.ToLower(m.input))
+	cleanedInput := strings.Fields(m.input)
 	if len(cleanedInput) < 2 {
 		m.err = fmt.Errorf("usage: friends <nickname> | --delete <nickname>")
 		return m, nil
 	}
 
-	switch cleanedInput[1] {
+	flag := strings.ToLower(cleanedInput[1])
+
+	switch flag {
 	case "--delete":
 		if len(cleanedInput) < 3 {
 			m.err = fmt.Errorf("usage: friends --delete <nickname>")
 			return m, nil
 		}
 
-		targetName := cleanedInput[2]
+		target := cleanedInput[2]
+		return m, func() tea.Msg {
+			err := m.cfg.client.deleteFriendship(target, m.cfg.currentUser.Token)
+			if err != nil {
+				return appErrMsg{err}
+			}
 
-		err := m.cfg.client.deleteFriendship(targetName, m.cfg.currentUser.Token)
-		if err != nil {
-			m.err = fmt.Errorf("error: %v", err)
-			return m, nil
+			return friendsResultMsg{fmt.Sprintf("removed %s from friends", target)}
 		}
-
-		m.output = fmt.Sprintf("You have successfully removed %s from your friends list.", targetName)
-		return m, nil
 
 	default:
-		targetNickname := cleanedInput[1]
-
-		result, err := m.cfg.client.sendFriendRequest(targetNickname, m.cfg.currentUser.Token)
-		if err != nil {
-			m.err = fmt.Errorf("error: %v", err)
-			return m, nil
-		}
-
-		switch result.Status {
-		case "created":
-			m.output = fmt.Sprintf("Friend request successfully sent to %s.", targetNickname)
-			return m, nil
-		case "accepted":
-			m.output = fmt.Sprintf("You have successfully added %s as a friend.", targetNickname)
-			return m, nil
-		case "sent":
-			m.output = fmt.Sprintf("Friend request to %s already sent.", targetNickname)
-			return m, nil
-		case "friends":
-			m.output = fmt.Sprintf("You and %s are already friends.", targetNickname)
-			return m, nil
+		target := cleanedInput[1]
+		return m, func() tea.Msg {
+			result, err := m.cfg.client.sendFriendRequest(target, m.cfg.currentUser.Token)
+			if err != nil {
+				return appErrMsg{err}
+			}
+			switch result.Status {
+			case "created":
+				return friendsResultMsg{fmt.Sprintf("friend request sent to %s", target)}
+			case "accepted":
+				return friendsResultMsg{fmt.Sprintf("you and %s are now friends", target)}
+			case "sent":
+				return friendsResultMsg{fmt.Sprintf("friend request to %s already sent", target)}
+			case "friends":
+				return friendsResultMsg{fmt.Sprintf("you and %s are already friends", target)}
+			}
+			return nil
 		}
 	}
-
-	return m, nil
 }
 
 func commandNotifications(m appModel) (appModel, tea.Cmd) {
@@ -265,34 +292,31 @@ func commandNotifications(m appModel) (appModel, tea.Cmd) {
 		return m, nil
 	}
 
-	notifications, err := m.cfg.client.getNotifications(m.cfg.currentUser.Token)
-	if err != nil {
-		m.err = fmt.Errorf("Couldn't get notifications. %v", err)
-		return m, nil
-	}
-
-	if len(notifications.UnreadMessages) == 0 && len(notifications.FriendRequests) == 0 {
-		m.output = "You have no notifications"
-		return m, nil
-	}
-
-	if len(notifications.UnreadMessages) > 0 {
-		for _, msg := range notifications.UnreadMessages {
-			m.notifMessages = append(m.notifMessages, fmt.Sprintf("You have %d unread messages from %s\n", msg.Count, msg.Nickname))
+	return m, func() tea.Msg {
+		notifs, err := m.cfg.client.getNotifications(m.cfg.currentUser.Token)
+		if err != nil {
+			return appErrMsg{err}
 		}
-	}
 
-	if len(notifications.FriendRequests) > 0 {
-		for _, f := range notifications.FriendRequests {
+		var messages, friends []string
+
+		for _, msg := range notifs.UnreadMessages {
+			messages = append(messages, fmt.Sprintf("%d unread from %s", msg.Count, msg.Nickname))
+		}
+
+		for _, f := range notifs.FriendRequests {
 			if f.SenderNickname == m.cfg.currentUser.Nickname {
-				m.notifFriends = append(m.notifFriends, fmt.Sprintf("Friend request to %s is pending\n", f.ReceiverNickname))
+				friends = append(friends, fmt.Sprintf("pending request to %s", f.ReceiverNickname))
 			} else {
-				m.notifFriends = append(m.notifFriends, fmt.Sprintf("Friend request from %s\n", f.SenderNickname))
+				friends = append(friends, fmt.Sprintf("friend request from %s", f.SenderNickname))
 			}
 		}
-	}
 
-	return m, nil
+		return notificationsResultMsg{
+			messages: messages,
+			friends:  friends,
+		}
+	}
 }
 
 func getCommands() []command {

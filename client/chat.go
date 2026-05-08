@@ -27,6 +27,7 @@ type chatModel struct {
 	msgChan         chan wsMessage
 	conn            *websocket.Conn
 	ctx             context.Context
+	cancel          context.CancelFunc
 	currentNickname string
 	width           int
 	height          int
@@ -234,17 +235,16 @@ func (m chatModel) View() string {
 	)
 }
 
-func (c *Client) connectToChat(chatID uuid.UUID, token string, currentNickname string) (*websocket.Conn, context.Context, chan wsMessage, error) {
+func (c *Client) connectToChat(chatID uuid.UUID, token string, currentNickname string) (*websocket.Conn, context.Context, context.CancelFunc, chan wsMessage, error) {
 	cutPrefixURL, _ := strings.CutPrefix(baseURL, "http://")
 	wsURL := fmt.Sprintf("ws://%s/api/chats/ws?chat_id=%s&token=%s", cutPrefixURL, chatID, url.QueryEscape(token))
 
 	conn, _, err := websocket.DefaultDialer.Dial(wsURL, nil)
 	if err != nil {
-		return nil, nil, nil, err
+		return nil, nil, nil, nil, err
 	}
 
 	ctx, cancel := context.WithCancel(context.Background())
-	defer cancel()
 
 	msgChan := make(chan wsMessage, 50)
 
@@ -313,7 +313,7 @@ func (c *Client) connectToChat(chatID uuid.UUID, token string, currentNickname s
 	// 	log.Printf("couldn't close connection: %v", err)
 	// }
 
-	return conn, ctx, msgChan, nil
+	return conn, ctx, cancel, msgChan, nil
 }
 
 func formatMessage(msg wsMessage, currentNickname string) string {
