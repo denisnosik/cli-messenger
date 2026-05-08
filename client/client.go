@@ -32,7 +32,6 @@ type clientModel struct {
 	current tea.Model
 	width   int
 	height  int
-	err     error
 }
 
 var logo = `

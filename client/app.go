@@ -28,9 +28,6 @@ type switchToAppMsg struct{}
 type friendsResultMsg struct {
 	output string
 }
-type friendsErrMsg struct {
-	err error
-}
 
 type notificationsResultMsg struct {
 	messages []string
@@ -207,7 +204,7 @@ func commandLogin(m appModel) (appModel, tea.Cmd) {
 
 func commandChat(m appModel) (appModel, tea.Cmd) {
 	if m.cfg.currentUser.Token == "" {
-		m.err = fmt.Errorf("You must be logged in first")
+		m.err = fmt.Errorf("you must be logged in first")
 		return m, nil
 	}
 
@@ -235,7 +232,7 @@ func commandChat(m appModel) (appModel, tea.Cmd) {
 
 func commandFriends(m appModel) (appModel, tea.Cmd) {
 	if m.cfg.currentUser.Token == "" {
-		m.err = fmt.Errorf("You must be logged in first")
+		m.err = fmt.Errorf("you must be logged in first")
 		return m, nil
 	}
 
@@ -288,7 +285,7 @@ func commandFriends(m appModel) (appModel, tea.Cmd) {
 
 func commandNotifications(m appModel) (appModel, tea.Cmd) {
 	if m.cfg.currentUser.Token == "" {
-		m.err = fmt.Errorf("You must be logged in first")
+		m.err = fmt.Errorf("you must be logged in first")
 		return m, nil
 	}
 
