@@ -206,5 +206,7 @@ func (m authModel) doRegister() tea.Msg {
 		return loginErrMsg{fmt.Errorf("couldn't register")}
 	}
 
-	return registerSuccessMsg{nickname: result.Nickname}
+	return registerSuccessMsg{
+		nickname: result.Nickname,
+	}
 }

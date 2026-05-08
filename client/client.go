@@ -86,6 +86,20 @@ func (m clientModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		m.current = next
 		return m, next.Init()
 
+	case registerSuccessMsg:
+		auth, ok := m.current.(authModel)
+		if !ok {
+			return m, nil
+		}
+
+		next := appModel{
+			cfg: auth.cfg,
+		}
+
+		next.output = fmt.Sprintf("registered as %s, now login", msg.nickname)
+		m.current = next
+		return m, next.Init()
+
 	case switchToAuthMsg:
 		app, ok := m.current.(appModel)
 		if !ok {
@@ -119,6 +133,7 @@ func (m clientModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 			cancel:          cancel,
 			width:           m.width,
 			height:          m.height,
+			msgBoxHeight:    m.height - 7,
 			currentNickname: msg.currentNickname,
 		}
 

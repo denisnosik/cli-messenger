@@ -183,12 +183,18 @@ func (m chatModel) View() string {
 
 	visible := m.messages[start:end]
 
-	var msgBuilder strings.Builder
-	for _, msg := range visible {
-		msgBuilder.WriteString(msg + "\n")
+	var b strings.Builder
+
+	padding := msgBoxHeight - len(visible)
+	if padding > 0 {
+		b.WriteString(strings.Repeat("\n", padding))
 	}
 
-	msgs := msgBuilder.String()
+	for _, msg := range visible {
+		b.WriteString(msg + "\n")
+	}
+
+	msgs := b.String()
 	if msgs == "" {
 		msgs = lipgloss.NewStyle().
 			Foreground(lipgloss.Color("245")).
@@ -224,14 +230,14 @@ func (m chatModel) View() string {
 
 	help := chatHelpStyle.Render("enter — send  |  ↑↓ — scroll  |  esc/ctrl+c — quit")
 
+	parts := []string{messagesBox}
+	if scrollIndicator != "" {
+		parts = append(parts, scrollIndicator)
+	}
+	parts = append(parts, "", inputBox, help)
+
 	return chatContainerStyle.Render(
-		lipgloss.JoinVertical(lipgloss.Left,
-			messagesBox,
-			scrollIndicator,
-			"",
-			inputBox,
-			help,
-		),
+		lipgloss.JoinVertical(lipgloss.Left, parts...),
 	)
 }
 
@@ -295,23 +301,6 @@ func (c *Client) connectToChat(chatID uuid.UUID, token string, currentNickname s
 			}
 		}
 	}()
-
-	// m := chatModel{
-	// 	msgChan:         msgChan,
-	// 	conn:            conn,
-	// 	ctx:             ctx,
-	// 	currentNickname: currentNickname,
-	// }
-
-	// p := tea.NewProgram(m, tea.WithAltScreen())
-
-	// if _, err := p.Run(); err != nil {
-	// 	return err
-	// }
-
-	// if err := conn.Close(); err != nil {
-	// 	log.Printf("couldn't close connection: %v", err)
-	// }
 
 	return conn, ctx, cancel, msgChan, nil
 }
