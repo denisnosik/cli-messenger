@@ -12,6 +12,7 @@ type appModel struct {
 	cfg           *config
 	input         string
 	output        string
+	friendsList   []string
 	notifMessages []string
 	notifFriends  []string
 	err           error
@@ -27,6 +28,7 @@ type switchToAppMsg struct{}
 
 type friendsResultMsg struct {
 	output string
+	list   []string
 }
 
 type notificationsResultMsg struct {
@@ -80,10 +82,20 @@ func (m appModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 	switch msg := msg.(type) {
 
 	case friendsResultMsg:
-		m.output = msg.output
+		if msg.output != "" {
+			m.output = msg.output
+		}
+
+		if len(msg.list) > 0 {
+			m.friendsList = msg.list
+		}
+
 		return m, nil
 
 	case notificationsResultMsg:
+		m.output = ""
+		m.notifMessages = msg.messages
+		m.notifFriends = msg.friends
 		if len(msg.messages) == 0 && len(msg.friends) == 0 {
 			m.output = "no notifications"
 			return m, nil
@@ -110,13 +122,22 @@ func (m appModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 			cleanedInput := strings.Fields(strings.ToLower(m.input))
 			commandInput := cleanedInput[0]
 
+			// clear output and notifs
+			m.friendsList = nil
+			m.notifMessages = nil
+			m.notifFriends = nil
+			// ------
+
 			for _, cmd := range getCommands() {
 				if commandInput == cmd.name {
 					return cmd.callback(m)
 				}
 			}
 
+			m.input = ""
+
 			m.err = fmt.Errorf("unknown command")
+
 			return m, nil
 
 		case "backspace":
@@ -162,11 +183,28 @@ func (m appModel) View() string {
 		b.WriteString("\n\n")
 	}
 
+	if len(m.friendsList) > 0 {
+		b.WriteString(appLabelStyle.Render("You friends"))
+		b.WriteString("\n\n")
+
+		for _, friend := range m.friendsList {
+			b.WriteString(appOutputStyle.Render(friend))
+			b.WriteString("\n")
+		}
+		b.WriteString("\n")
+	}
+
+	if len(m.notifMessages) > 0 || len(m.notifFriends) > 0 {
+		b.WriteString(appLabelStyle.Render("Your notifications"))
+		b.WriteString("\n\n")
+	}
+
 	if len(m.notifMessages) > 0 {
 		for _, notif := range m.notifMessages {
 			b.WriteString(appOutputStyle.Render(notif))
 			b.WriteString("\n")
 		}
+		b.WriteString("\n")
 	}
 
 	if len(m.notifFriends) > 0 {
@@ -174,6 +212,7 @@ func (m appModel) View() string {
 			b.WriteString(appOutputStyle.Render(notif))
 			b.WriteString("\n")
 		}
+		b.WriteString("\n")
 	}
 
 	b.WriteString(appLabelStyle.Render("Enter command") + "\n")
@@ -238,13 +277,39 @@ func commandFriends(m appModel) (appModel, tea.Cmd) {
 
 	cleanedInput := strings.Fields(m.input)
 	if len(cleanedInput) < 2 {
-		m.err = fmt.Errorf("usage: friends <nickname> | --delete <nickname>")
+		m.err = fmt.Errorf("usage: friends <nickname> | friends --list | --delete <nickname>")
 		return m, nil
 	}
 
 	flag := strings.ToLower(cleanedInput[1])
 
 	switch flag {
+	case "--list":
+		if len(cleanedInput) < 2 {
+			m.err = fmt.Errorf("usage: friends --list")
+			return m, nil
+		}
+
+		return m, func() tea.Msg {
+			friends, err := m.cfg.client.getFriends(m.cfg.currentUser.Token)
+			if err != nil {
+				return appErrMsg{err}
+			}
+
+			var result friendsResultMsg
+			count := 1
+			for _, f := range friends {
+				status := "offline"
+				if f.Online {
+					status = "online"
+				}
+				result.list = append(result.list, fmt.Sprintf("%d.%-15s [%s]", count, f.Nickname, status))
+				count += 1
+			}
+
+			return result
+		}
+
 	case "--delete":
 		if len(cleanedInput) < 3 {
 			m.err = fmt.Errorf("usage: friends --delete <nickname>")
@@ -258,7 +323,7 @@ func commandFriends(m appModel) (appModel, tea.Cmd) {
 				return appErrMsg{err}
 			}
 
-			return friendsResultMsg{fmt.Sprintf("removed %s from friends", target)}
+			return friendsResultMsg{output: fmt.Sprintf("removed %s from friends", target)}
 		}
 
 	default:
@@ -270,13 +335,13 @@ func commandFriends(m appModel) (appModel, tea.Cmd) {
 			}
 			switch result.Status {
 			case "created":
-				return friendsResultMsg{fmt.Sprintf("friend request sent to %s", target)}
+				return friendsResultMsg{output: fmt.Sprintf("friend request sent to %s", target)}
 			case "accepted":
-				return friendsResultMsg{fmt.Sprintf("you and %s are now friends", target)}
+				return friendsResultMsg{output: fmt.Sprintf("you and %s are now friends", target)}
 			case "sent":
-				return friendsResultMsg{fmt.Sprintf("friend request to %s already sent", target)}
+				return friendsResultMsg{output: fmt.Sprintf("friend request to %s already sent", target)}
 			case "friends":
-				return friendsResultMsg{fmt.Sprintf("you and %s are already friends", target)}
+				return friendsResultMsg{output: fmt.Sprintf("you and %s are already friends", target)}
 			}
 			return nil
 		}
@@ -298,7 +363,7 @@ func commandNotifications(m appModel) (appModel, tea.Cmd) {
 		var messages, friends []string
 
 		for _, msg := range notifs.UnreadMessages {
-			messages = append(messages, fmt.Sprintf("%d unread from %s", msg.Count, msg.Nickname))
+			messages = append(messages, fmt.Sprintf("you have %d unread messages from %s", msg.Count, msg.Nickname))
 		}
 
 		for _, f := range notifs.FriendRequests {
