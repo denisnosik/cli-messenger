@@ -93,13 +93,11 @@ func (m appModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		return m, nil
 
 	case notificationsResultMsg:
-		m.output = ""
-		m.notifMessages = msg.messages
-		m.notifFriends = msg.friends
 		if len(msg.messages) == 0 && len(msg.friends) == 0 {
 			m.output = "no notifications"
 			return m, nil
 		}
+
 		m.notifMessages = msg.messages
 		m.notifFriends = msg.friends
 		return m, nil
@@ -123,6 +121,7 @@ func (m appModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 			commandInput := cleanedInput[0]
 
 			// clear output and notifs
+			m.output = ""
 			m.friendsList = nil
 			m.notifMessages = nil
 			m.notifFriends = nil
