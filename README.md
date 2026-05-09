@@ -1,5 +1,5 @@
 
-![ci badge](https://github.com/denisnosik/dedachat/actions/workflows/ci.yml/badge.svg)
+![ci badge](https://github.com/denisnosik/dedachat/actions/workflows/ci.yml/badge.svg) [![Go Report Card](https://goreportcard.com/badge/github.com/denisnosik/dedachat)](https://goreportcard.com/report/github.com/denisnosik/dedachat)
 
 # DEDA Chat
 An open-source real-time messaging system built in Go.
@@ -75,20 +75,16 @@ The terminal client is built with Bubble Tea following the Elm architecture — 
 
 ## Usage/Examples
 
-After runing the client,
-enter the `help` command to see the available commands.
+The client uses the Bubble Tea TUI for visual convenience; just use the commands to navigate through the application.
 
-```bash
-> help
-```
 ```
 register                       create a new account
-login                          sign in with your nickname and password
+login                          sign in using your nickname and password
 chat <nickname>                open a chat with a friend
-friends <nickname>             send a friend request (friends --help for more)
-notifications                  view unread messages and friend requests
-help                           show available commands
-exit                           quit the application
+friends <nickname>             send a friend request to a user
+friends --delete <nickname>    remove a user from your friends list
+friends --list                 display a list of all your friends
+notifications                  display unread messages and friend requests
 ```
 
 ### Create a new user and login
@@ -101,23 +97,38 @@ After you have a user, you can log in using the command:
 
 ```bash
 >  login
-```
+``` 
 
 ### Friendship
-To chat, you need friends...
+To start chatting, you need to add friends first.
 
-Enter the command to send a friend request:
+Enter the following command to send a friend request:
+
 ```bash
 > friends <nickname>
 ```
-You must wait until the other person accepts the friend request (if they accept).
+You must wait until the other user accepts your friend request.
+
+To remove a user from your friends list, use the `--delete` flag:
+
+```bash
+> friends --delete <nickname>
+```
+
+To display a list of all your friends, use the `--list` flag:
+
+```bash
+> friends --list
+```
 
 ### Chat
 To open a chat, use the command
+
 ```bash
 > chat <nickname>
 ```
-After that, everything you type in the terminal will be delivered to your friend.
+
+After entering the command, a simple chat window will open where you can communicate with your friend.
 
 ## Contributing
 Contributions are always welcome!
