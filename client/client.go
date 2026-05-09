@@ -172,7 +172,7 @@ func Run() {
 	}
 
 	c := make(chan os.Signal, 1)
-	signal.Notify(c, os.Interrupt, syscall.SIGTERM)
+	signal.Notify(c, syscall.SIGTERM)
 	go func() {
 		<-c
 		if cfg.currentUser.Token != "" {
@@ -183,10 +183,21 @@ func Run() {
 		os.Exit(0)
 	}()
 
-	p := tea.NewProgram(clientModel{cfg: cfg, current: appModel{cfg: cfg}}, tea.WithAltScreen())
+	p := tea.NewProgram(clientModel{
+		cfg:     cfg,
+		current: appModel{cfg: cfg},
+	}, tea.WithAltScreen())
+
 	_, err := p.Run()
 	if err != nil {
 		fmt.Println("Error:", err)
 		os.Exit(1)
+	}
+
+	// set offline when quit with tea.Quit
+	if cfg.currentUser.Token != "" {
+		if err := cfg.client.setOffline(cfg.currentUser.Token); err != nil {
+			fmt.Printf("Couldn't set user offline. %v\n", err)
+		}
 	}
 }
