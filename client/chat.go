@@ -242,8 +242,9 @@ func (m chatModel) View() string {
 }
 
 func (c *Client) connectToChat(chatID uuid.UUID, token string, currentNickname string) (*websocket.Conn, context.Context, context.CancelFunc, chan wsMessage, error) {
-	cutPrefixURL, _ := strings.CutPrefix(baseURL, "http://")
-	wsURL := fmt.Sprintf("ws://%s/api/chats/ws?chat_id=%s&token=%s", cutPrefixURL, chatID, url.QueryEscape(token))
+	wsURL := strings.Replace(baseURL, "http://", "ws://", 1) // for localhost
+	wsURL = strings.Replace(wsURL, "https://", "wss://", 1)  // for server
+	wsURL = fmt.Sprintf("%s/api/chats/ws?chat_id=%s&token=%s", wsURL, chatID, url.QueryEscape(token))
 
 	conn, _, err := websocket.DefaultDialer.Dial(wsURL, nil)
 	if err != nil {
