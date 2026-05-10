@@ -25,10 +25,18 @@ Fork it and build on top of it.
 - Online/offline status tracking
 - Chat history
 
+
+## Try It Now
+A public server is running at `https://dedachat-production.up.railway.app`. No setup needed, just run the client and connect:
+
+```bash
+> SERVER_ADDR=https://dedachat-production.up.railway.app go run ./cmd/client
+```
+
 ## Requirements
 
 - [Docker](https://www.docker.com/) 
-- [Go 1.25+](https://golang.org/) (for running the client)
+- [Go 1.25+](https://golang.org/)
 
 ## Quick Start
 
