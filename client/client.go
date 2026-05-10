@@ -11,7 +11,7 @@ import (
 	tea "github.com/charmbracelet/bubbletea"
 )
 
-const baseURL = "http://localhost:8080"
+var baseURL string
 
 type Client struct {
 	httpClient http.Client
@@ -164,6 +164,10 @@ func (m clientModel) View() string {
 }
 
 func Run() {
+	if env := os.Getenv("SERVER_ADDR"); env != "" {
+		baseURL = env
+	}
+
 	client := Client{httpClient: http.Client{Timeout: 5 * time.Second}}
 
 	cfg := &config{
