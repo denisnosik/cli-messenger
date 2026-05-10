@@ -6,10 +6,11 @@ An open-source real-time messaging system built in Go.
 
 DEDA Chat is a self-hostable, open-source messaging system designed to be simple, extensible, and production-ready out of the box. It provides everything you need to run your own real-time chat platform: authentication, friend management, WebSocket-based messaging, and a terminal client, all in one place.
 
+<img width="800" height="450" alt="dedachat_gif_main-ezgif com-video-to-gif-converter" src="https://github.com/user-attachments/assets/cd103509-3ced-4612-a816-041a515c1b31" />
+
+
 ## Motivation
-This started as a personal project, I wanted a minimal, fast way to chat with someone directly from the terminal.
-But as the project grew, I realized it could be something more useful than a personal tool.
-Fork it and build on top of it.
+I built DEDA Chat to better understand how real-time messaging works under the hood, synchronization between clients, instant message delivery, and terminal-to-terminal communication. The result is a minimal, working foundation that others can fork and use to build their own messenger.
 
 ## Features
 
@@ -108,6 +109,9 @@ After you have a user, you can log in using the command:
 ``` 
 
 ### Friendship
+
+<img width="800" height="450" alt="deda_friends_gif-ezgif com-video-to-gif-converter" src="https://github.com/user-attachments/assets/25a21959-1be1-4af8-8647-1f8cf8e9ea42" />
+
 To start chatting, you need to add friends first.
 
 Enter the following command to send a friend request:
@@ -130,6 +134,9 @@ To display a list of all your friends, use the `--list` flag:
 ```
 
 ### Chat
+
+<img width="800" height="450" alt="dedachat_chat_gif-ezgif com-video-to-gif-converter (1)" src="https://github.com/user-attachments/assets/49974c0a-0c92-4d82-8484-a69b06d0256a" />
+
 To open a chat, use the command
 
 ```bash
