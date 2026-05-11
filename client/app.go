@@ -223,7 +223,7 @@ func (m appModel) View() string {
 		b.WriteString(appErrorStyle.Render(m.err.Error()) + "\n")
 	}
 
-	b.WriteString(appLabelStyle.Render("enter — submit  | esc, ctrl+c — quit") + "\n")
+	b.WriteString(appLabelStyle.Render("enter — submit | esc, ctrl+c — quit") + "\n")
 
 	return b.String()
 }

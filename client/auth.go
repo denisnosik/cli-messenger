@@ -179,7 +179,7 @@ func (m authModel) View() string {
 		b.WriteString(authErrorStyle.Render(m.err.Error()) + "\n")
 	}
 
-	b.WriteString(authLabelStyle.Render("enter — next  | ctrl+z back to login input | esc, ctrl+c — quit") + "\n")
+	b.WriteString(authLabelStyle.Render("enter — next | ctrl+z back to login input | esc, ctrl+c — quit") + "\n")
 
 	return b.String()
 }
