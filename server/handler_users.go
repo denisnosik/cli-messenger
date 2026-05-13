@@ -1,7 +1,9 @@
 package server
 
 import (
+	"database/sql"
 	"encoding/json"
+	"errors"
 	"net/http"
 	"time"
 
@@ -32,6 +34,11 @@ func (cfg *apiConfig) handlerCreateUser(w http.ResponseWriter, r *http.Request) 
 		return
 	}
 
+	if params.Nickname == "" || params.Password == "" {
+		respondWithError(w, http.StatusBadRequest, "Empty nickname or password field", nil)
+		return
+	}
+
 	hashPwd, err := auth.HashPassword(params.Password)
 	if err != nil {
 		respondWithError(w, http.StatusInternalServerError, "Cannot hash the password", nil)
@@ -47,6 +54,7 @@ func (cfg *apiConfig) handlerCreateUser(w http.ResponseWriter, r *http.Request) 
 			respondWithError(w, http.StatusConflict, "User already exists", err)
 			return
 		}
+
 		respondWithError(w, http.StatusInternalServerError, "DB error", nil)
 		return
 	}
@@ -74,9 +82,19 @@ func (cfg *apiConfig) handlerLoginUser(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
+	if params.Nickname == "" || params.Password == "" {
+		respondWithError(w, http.StatusBadRequest, "Empty nickname or password field", nil)
+		return
+	}
+
 	dbUser, err := cfg.db.GetUserByNickname(r.Context(), params.Nickname)
 	if err != nil {
-		respondWithError(w, http.StatusUnauthorized, "Incorrect nickname or password", err)
+		if errors.Is(err, sql.ErrNoRows) {
+			respondWithError(w, http.StatusUnauthorized, "Incorrect nickname or password", err)
+			return
+		}
+
+		respondWithError(w, http.StatusInternalServerError, "Couldn't get user", nil)
 		return
 	}
 
