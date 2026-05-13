@@ -276,13 +276,29 @@ func commandFriends(m appModel) (appModel, tea.Cmd) {
 
 	cleanedInput := strings.Fields(m.input)
 	if len(cleanedInput) < 2 {
-		m.err = fmt.Errorf("usage: friends <nickname> | friends --list | --delete <nickname>")
+		m.err = fmt.Errorf("usage: friends <nickname> | friends --list | friends --delete <nickname>")
 		return m, nil
 	}
 
 	flag := strings.ToLower(cleanedInput[1])
 
 	switch flag {
+	case "--help":
+		if len(cleanedInput) < 2 {
+			m.err = fmt.Errorf("usage: friends --list")
+			return m, nil
+		}
+
+		return m, func() tea.Msg {
+			return friendsResultMsg{
+				list: []string{
+					fmt.Sprintf("  %-30s %s", "friends <nickname>", "Send a friend request"),
+					fmt.Sprintf("  %-30s %s", "friends --list", "Show all friends"),
+					fmt.Sprintf("  %-30s %s", "friends --delete <nickname>", "Remove a friend"),
+				},
+			}
+		}
+
 	case "--list":
 		if len(cleanedInput) < 2 {
 			m.err = fmt.Errorf("usage: friends --list")
