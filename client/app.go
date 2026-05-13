@@ -285,7 +285,7 @@ func commandFriends(m appModel) (appModel, tea.Cmd) {
 	switch flag {
 	case "--help":
 		if len(cleanedInput) < 2 {
-			m.err = fmt.Errorf("usage: friends --list")
+			m.err = fmt.Errorf("usage: friends --help")
 			return m, nil
 		}
 
