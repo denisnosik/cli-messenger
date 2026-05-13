@@ -164,8 +164,11 @@ func (m clientModel) View() string {
 }
 
 func Run() {
-	if env := os.Getenv("SERVER_ADDR"); env != "" {
+	env := os.Getenv("SERVER_ADDR")
+	if env != "" {
 		baseURL = env
+	} else {
+		baseURL = "http://localhost:8080"
 	}
 
 	client := Client{httpClient: http.Client{Timeout: 5 * time.Second}}
