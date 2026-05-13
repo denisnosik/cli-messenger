@@ -183,7 +183,7 @@ func (m appModel) View() string {
 	}
 
 	if len(m.friendsList) > 0 {
-		b.WriteString(appLabelStyle.Render("You friends"))
+		b.WriteString(appLabelStyle.Render("Friends"))
 		b.WriteString("\n\n")
 
 		for _, friend := range m.friendsList {
