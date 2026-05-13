@@ -23,3 +23,7 @@ LIMIT 1;
 SELECT * FROM users
 WHERE id = $1
 LIMIT 1;
+
+-- name: DeleteUserByNickname :exec
+DELETE FROM users
+WHERE nickname = $1;
