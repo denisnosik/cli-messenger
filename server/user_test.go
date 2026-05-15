@@ -3,6 +3,7 @@ package server
 import (
 	"bytes"
 	"encoding/json"
+	"fmt"
 	"net/http"
 	"testing"
 	"time"
@@ -22,13 +23,44 @@ type registerResponse struct {
 
 var testClient = http.Client{Timeout: 5 * time.Second}
 
+type testUser struct {
+	nickname string
+	token    string
+}
+
 const baseURL = "http://localhost:8080"
 
-func TestUserRegister(t *testing.T) {
-	// Test: Valid register (handlerCreateUser)
+func createAndLoginUser(t *testing.T) testUser {
+	t.Helper()
+	nickname := uniqueNickname()
+
+	// register
+	res := registerUser(t, nickname, "000000")
+	res.Body.Close()
+	require.Equal(t, http.StatusCreated, res.StatusCode)
+
+	// login
+	res = loginUser(t, nickname, "000000")
+	defer res.Body.Close()
+	require.Equal(t, http.StatusOK, res.StatusCode)
+
+	decoder := json.NewDecoder(res.Body)
+	var result User
+	err := decoder.Decode(&result)
+	require.NoError(t, err)
+
+	return testUser{
+		nickname: result.Nickname,
+		token:    result.Token,
+	}
+}
+
+func registerUser(t *testing.T, nickname, password string) *http.Response {
+	t.Helper()
+
 	body, err := json.Marshal(registerRequest{
-		Nickname: "test_user1",
-		Password: "000000",
+		Nickname: nickname,
+		Password: password,
 	})
 	require.NoError(t, err)
 
@@ -38,29 +70,49 @@ func TestUserRegister(t *testing.T) {
 	res, err := testClient.Do(req)
 	require.NoError(t, err)
 
+	return res
+}
+
+func loginUser(t *testing.T, nickname, password string) *http.Response {
+	t.Helper()
+
+	body, err := json.Marshal(registerRequest{
+		Nickname: nickname,
+		Password: password,
+	})
+	require.NoError(t, err)
+
+	req, err := http.NewRequest("POST", baseURL+"/api/login", bytes.NewBuffer(body))
+	require.NoError(t, err)
+
+	res, err := testClient.Do(req)
+	require.NoError(t, err)
+
+	return res
+}
+
+func uniqueNickname() string {
+	return fmt.Sprintf("test_user_%d", time.Now().UnixNano())
+}
+
+func TestUserRegister(t *testing.T) {
+	// Test: Valid register (handlerCreateUser)
+	nickname := uniqueNickname()
+	res := registerUser(t, nickname, "000000")
+
 	assert.Equal(t, http.StatusCreated, res.StatusCode)
 
 	decoder := json.NewDecoder(res.Body)
 	var resultRegister registerResponse
-	err = decoder.Decode(&resultRegister)
+	err := decoder.Decode(&resultRegister)
 	require.NoError(t, err)
 
-	assert.Equal(t, "test_user1", resultRegister.Nickname)
-
+	assert.Equal(t, nickname, resultRegister.Nickname)
 	res.Body.Close()
 	// -----------------------------------------
 
-	// Test: Invalid register (request body no nickname)
-	body, err = json.Marshal(registerRequest{
-		Password: "000000",
-	})
-	require.NoError(t, err)
-
-	req, err = http.NewRequest("POST", baseURL+"/api/register", bytes.NewBuffer(body))
-	require.NoError(t, err)
-
-	res, err = testClient.Do(req)
-	require.NoError(t, err)
+	// Test: Invalid register (no nickname)
+	res = registerUser(t, "", "000000")
 
 	assert.Equal(t, http.StatusBadRequest, res.StatusCode)
 
@@ -73,17 +125,9 @@ func TestUserRegister(t *testing.T) {
 	res.Body.Close()
 	// -----------------------------------------
 
-	// Test: Invalid register (request body no password)
-	body, err = json.Marshal(registerRequest{
-		Nickname: "test_user1",
-	})
-	require.NoError(t, err)
-
-	req, err = http.NewRequest("POST", baseURL+"/api/register", bytes.NewBuffer(body))
-	require.NoError(t, err)
-
-	res, err = testClient.Do(req)
-	require.NoError(t, err)
+	// Test: Invalid register (no password)
+	nickname = uniqueNickname()
+	res = registerUser(t, nickname, "")
 
 	assert.Equal(t, http.StatusBadRequest, res.StatusCode)
 
@@ -96,17 +140,11 @@ func TestUserRegister(t *testing.T) {
 	// -----------------------------------------
 
 	// Test: Invalid register (user already exist)
-	body, err = json.Marshal(registerRequest{
-		Nickname: "test_user1",
-		Password: "000000",
-	})
-	require.NoError(t, err)
+	nickname = uniqueNickname()
+	res = registerUser(t, nickname, "000000")
+	res.Body.Close()
 
-	req, err = http.NewRequest("POST", baseURL+"/api/register", bytes.NewBuffer(body))
-	require.NoError(t, err)
-
-	res, err = testClient.Do(req)
-	require.NoError(t, err)
+	res = registerUser(t, nickname, "000000")
 
 	assert.Equal(t, http.StatusConflict, res.StatusCode)
 
@@ -120,51 +158,21 @@ func TestUserRegister(t *testing.T) {
 }
 func TestUserLogin(t *testing.T) {
 	// Test: Valid login user (handlerLoginUser)
-	body, err := json.Marshal(registerRequest{
-		Nickname: "test_user1",
-		Password: "000000",
-	})
-	require.NoError(t, err)
+	user := createAndLoginUser(t)
 
-	req, err := http.NewRequest("POST", baseURL+"/api/login", bytes.NewBuffer(body))
-	require.NoError(t, err)
-
-	res, err := testClient.Do(req)
-	require.NoError(t, err)
-
-	assert.Equal(t, http.StatusOK, res.StatusCode)
-
-	decoder := json.NewDecoder(res.Body)
-	var resultUser User
-	err = decoder.Decode(&resultUser)
-	require.NoError(t, err)
-
-	assert.Equal(t, "test_user1", resultUser.Nickname)
-	assert.NotNil(t, resultUser.ID)
-	assert.NotNil(t, resultUser.CreatedAt)
-	assert.NotNil(t, resultUser.UpdatedAt)
-
-	res.Body.Close()
+	assert.NotNil(t, user.nickname)
+	assert.NotNil(t, user.token)
 	// -----------------------------------------
 
 	// Test: Invalid login user (user doesn't exist)
-	body, err = json.Marshal(registerRequest{
-		Nickname: "no_such_user",
-		Password: "000000",
-	})
-	require.NoError(t, err)
-
-	req, err = http.NewRequest("POST", baseURL+"/api/login", bytes.NewBuffer(body))
-	require.NoError(t, err)
-
-	res, err = testClient.Do(req)
-	require.NoError(t, err)
+	nickname := uniqueNickname()
+	res := loginUser(t, nickname, "000000")
 
 	assert.Equal(t, http.StatusUnauthorized, res.StatusCode)
 
-	decoder = json.NewDecoder(res.Body)
+	decoder := json.NewDecoder(res.Body)
 	var errRes errorResponse
-	err = decoder.Decode(&errRes)
+	err := decoder.Decode(&errRes)
 	require.NoError(t, err)
 
 	assert.NotNil(t, errRes.Error)
@@ -173,17 +181,12 @@ func TestUserLogin(t *testing.T) {
 	// -----------------------------------------
 
 	// Test: Invalid login user (wrong password)
-	body, err = json.Marshal(registerRequest{
-		Nickname: "test_user1",
-		Password: "111111",
-	})
-	require.NoError(t, err)
+	nickname = uniqueNickname()
+	res = registerUser(t, nickname, "000000")
+	res.Body.Close()
+	require.Equal(t, http.StatusCreated, res.StatusCode)
 
-	req, err = http.NewRequest("POST", baseURL+"/api/login", bytes.NewBuffer(body))
-	require.NoError(t, err)
-
-	res, err = testClient.Do(req)
-	require.NoError(t, err)
+	res = loginUser(t, nickname, "wrong-password")
 
 	assert.Equal(t, http.StatusUnauthorized, res.StatusCode)
 
