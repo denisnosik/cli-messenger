@@ -72,4 +72,36 @@ func TestFriendRequest(t *testing.T) {
 
 	res.Body.Close()
 	// -------------------------------
+
+	// Test: Invalid user doesn't exist
+	user = createAndLoginUser(t)
+	assert.NotNil(t, user.nickname)
+	assert.NotNil(t, user.token)
+
+	targetNickname = uniqueNickname()
+
+	body, err = json.Marshal(friendsRequest{
+		TargetNickname: targetNickname,
+	})
+	require.NoError(t, err)
+
+	req, err = http.NewRequest("POST", baseURL+"/api/friends", bytes.NewBuffer(body))
+	require.NoError(t, err)
+
+	req.Header.Set("Authorization", "Bearer "+user.token)
+
+	res, err = testClient.Do(req)
+	require.NoError(t, err)
+
+	assert.Equal(t, http.StatusNotFound, res.StatusCode)
+
+	decoder = json.NewDecoder(res.Body)
+	var errRes errorResponse
+	err = decoder.Decode(&errRes)
+	require.NoError(t, err)
+
+	assert.NotNil(t, errRes.Error)
+
+	res.Body.Close()
+	// -------------------------------
 }
