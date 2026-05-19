@@ -14,7 +14,26 @@ type friendsRequest struct {
 	TargetNickname string `json:"target_nickname"`
 }
 
-func TestFriendRequest(t *testing.T) {
+func sendFriendRequest(t *testing.T, targetNickname, userToken string) *http.Response {
+	t.Helper()
+
+	body, err := json.Marshal(friendsRequest{
+		TargetNickname: targetNickname,
+	})
+	require.NoError(t, err)
+
+	req, err := http.NewRequest("POST", baseURL+"/api/friends", bytes.NewBuffer(body))
+	require.NoError(t, err)
+
+	req.Header.Set("Authorization", "Bearer "+userToken)
+
+	res, err := testClient.Do(req)
+	require.NoError(t, err)
+
+	return res
+}
+
+func TestFriend(t *testing.T) {
 	// Test: Valid friend request (handlerFriends)
 	user := createAndLoginUser(t)
 	assert.NotNil(t, user.nickname)
@@ -25,21 +44,8 @@ func TestFriendRequest(t *testing.T) {
 	assert.Equal(t, http.StatusCreated, res.StatusCode)
 	res.Body.Close()
 
-	body, err := json.Marshal(friendsRequest{
-		TargetNickname: targetNickname,
-	})
-	require.NoError(t, err)
-
-	req, err := http.NewRequest("POST", baseURL+"/api/friends", bytes.NewBuffer(body))
-	require.NoError(t, err)
-
-	req.Header.Set("Authorization", "Bearer "+user.token)
-
-	res, err = testClient.Do(req)
-	require.NoError(t, err)
-
+	res = sendFriendRequest(t, targetNickname, user.token)
 	assert.Equal(t, http.StatusCreated, res.StatusCode)
-
 	res.Body.Close()
 	// -------------------------------
 
@@ -50,26 +56,12 @@ func TestFriendRequest(t *testing.T) {
 
 	decoder := json.NewDecoder(res.Body)
 	var result User
-	err = decoder.Decode(&result)
+	err := decoder.Decode(&result)
 	require.NoError(t, err)
-
 	res.Body.Close()
 
-	body, err = json.Marshal(friendsRequest{
-		TargetNickname: user.nickname,
-	})
-	require.NoError(t, err)
-
-	req, err = http.NewRequest("POST", baseURL+"/api/friends", bytes.NewBuffer(body))
-	require.NoError(t, err)
-
-	req.Header.Set("Authorization", "Bearer "+result.Token)
-
-	res, err = testClient.Do(req)
-	require.NoError(t, err)
-
+	res = sendFriendRequest(t, user.nickname, result.Token)
 	assert.Equal(t, http.StatusOK, res.StatusCode)
-
 	res.Body.Close()
 	// -------------------------------
 
@@ -80,19 +72,7 @@ func TestFriendRequest(t *testing.T) {
 
 	targetNickname = uniqueNickname()
 
-	body, err = json.Marshal(friendsRequest{
-		TargetNickname: targetNickname,
-	})
-	require.NoError(t, err)
-
-	req, err = http.NewRequest("POST", baseURL+"/api/friends", bytes.NewBuffer(body))
-	require.NoError(t, err)
-
-	req.Header.Set("Authorization", "Bearer "+user.token)
-
-	res, err = testClient.Do(req)
-	require.NoError(t, err)
-
+	res = sendFriendRequest(t, targetNickname, user.token)
 	assert.Equal(t, http.StatusNotFound, res.StatusCode)
 
 	decoder = json.NewDecoder(res.Body)
