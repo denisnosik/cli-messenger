@@ -34,6 +34,12 @@ A public server is running at `https://dedachat-production.up.railway.app`. No s
 > SERVER_ADDR=https://dedachat-production.up.railway.app go run ./cmd/client
 ```
 
+or via flag
+
+```bash
+> go run ./cmd/client --server https://dedachat-production.up.railway.app
+```
+
 ## Requirements
 
 - [Docker](https://www.docker.com/) 

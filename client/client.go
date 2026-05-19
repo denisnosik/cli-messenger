@@ -1,6 +1,7 @@
 package client
 
 import (
+	"flag"
 	"fmt"
 	"net/http"
 	"os"
@@ -164,12 +165,19 @@ func (m clientModel) View() string {
 }
 
 func Run() {
-	env := os.Getenv("SERVER_ADDR")
-	if env != "" {
-		baseURL = env
-	} else {
-		baseURL = "http://localhost:8080"
+	serverFlag := flag.String("server", "", "server address")
+	flag.Parse()
+
+	server := *serverFlag
+
+	if server == "" {
+		server = os.Getenv("SERVER_ADDR")
+		if server == "" {
+			server = "http://localhost:8080"
+		}
 	}
+
+	baseURL = server
 
 	client := Client{httpClient: http.Client{Timeout: 5 * time.Second}}
 
