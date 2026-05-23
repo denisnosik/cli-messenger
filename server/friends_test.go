@@ -33,6 +33,25 @@ func sendFriendRequest(t *testing.T, targetNickname, userToken string) *http.Res
 	return res
 }
 
+func deleteFriendshipRequest(t *testing.T, targetNickname, userToken string) *http.Response {
+	t.Helper()
+
+	body, err := json.Marshal(friendsRequest{
+		TargetNickname: targetNickname,
+	})
+	require.NoError(t, err)
+
+	req, err := http.NewRequest("DELETE", baseURL+"/api/friends", bytes.NewBuffer(body))
+	require.NoError(t, err)
+
+	req.Header.Set("Authorization", "Bearer "+userToken)
+
+	res, err := testClient.Do(req)
+	require.NoError(t, err)
+
+	return res
+}
+
 func TestFriend(t *testing.T) {
 	// Test: Valid friend request (handlerFriends)
 	user := createAndLoginUser(t)
@@ -62,6 +81,21 @@ func TestFriend(t *testing.T) {
 
 	res = sendFriendRequest(t, user.nickname, result.Token)
 	assert.Equal(t, http.StatusOK, res.StatusCode)
+	res.Body.Close()
+	// -------------------------------
+
+	// Test: Valid delete friendship (handlerDeleteFriend)
+	res = loginUser(t, user.nickname, "000000")
+
+	require.Equal(t, http.StatusOK, res.StatusCode)
+
+	decoder = json.NewDecoder(res.Body)
+	err = decoder.Decode(&result)
+	require.NoError(t, err)
+	res.Body.Close()
+
+	res = deleteFriendshipRequest(t, targetNickname, result.Token)
+	assert.Equal(t, http.StatusNoContent, res.StatusCode)
 	res.Body.Close()
 	// -------------------------------
 
