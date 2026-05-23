@@ -154,8 +154,10 @@ func (m authModel) View() string {
 	}
 
 	b.WriteString("\n")
-	b.WriteString(authWelcomeStyle.Render(logo) + "\n\n")
-	b.WriteString(authWelcomeStyle.Render(title) + "\n\n")
+	b.WriteString(authWelcomeStyle.Render(logo))
+	b.WriteString("\n\n")
+	b.WriteString(authWelcomeStyle.Render(title))
+	b.WriteString("\n\n")
 
 	nicknameBox := ""
 	if m.step == stepNickname {
@@ -164,22 +166,28 @@ func (m authModel) View() string {
 		nicknameBox = authInactiveInputStyle.Render(m.nickname)
 	}
 
-	b.WriteString(authLabelStyle.Render("Nickname") + "\n")
-	b.WriteString(nicknameBox + "\n\n")
+	b.WriteString(authLabelStyle.Render("Nickname"))
+	b.WriteString("\n")
+	b.WriteString(nicknameBox)
+	b.WriteString("\n\n")
 
 	if m.step == stepPassword {
 		masked := strings.Repeat("*", len([]rune(m.password)))
 		passwordBox := authActiveInputStyle.Render(masked + "█")
 
-		b.WriteString(authLabelStyle.Render("Password") + "\n")
-		b.WriteString(passwordBox + "\n\n")
+		b.WriteString(authLabelStyle.Render("Password"))
+		b.WriteString("\n")
+		b.WriteString(passwordBox)
+		b.WriteString("\n\n")
 	}
 
 	if m.err != nil {
-		b.WriteString(authErrorStyle.Render(m.err.Error()) + "\n")
+		b.WriteString(authErrorStyle.Render(m.err.Error()))
+		b.WriteString("\n")
 	}
 
-	b.WriteString(authLabelStyle.Render("enter — next | ctrl+z back to login input | esc, ctrl+c — quit") + "\n")
+	b.WriteString(authLabelStyle.Render("enter — next | ctrl+z back to login input | esc, ctrl+c — quit"))
+	b.WriteString("\n")
 
 	return b.String()
 }

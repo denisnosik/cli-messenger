@@ -159,9 +159,11 @@ func (m appModel) View() string {
 	var b strings.Builder
 
 	b.WriteString("\n")
-	b.WriteString(appLogoStyle.Render(logo) + "\n\n")
+	b.WriteString(appLogoStyle.Render(logo))
+	b.WriteString("\n\n")
 
-	b.WriteString(appLabelStyle.Render("Available commands") + "\n")
+	b.WriteString(appLabelStyle.Render("Available commands"))
+	b.WriteString("\n")
 
 	b.WriteString("\n")
 
@@ -214,16 +216,20 @@ func (m appModel) View() string {
 		b.WriteString("\n")
 	}
 
-	b.WriteString(appLabelStyle.Render("Enter command") + "\n")
+	b.WriteString(appLabelStyle.Render("Enter command"))
+	b.WriteString("\n")
 
 	inputBox := appInputStyle.Render("> " + m.input + "█")
-	b.WriteString(inputBox + "\n\n")
+	b.WriteString(inputBox)
+	b.WriteString("\n\n")
 
 	if m.err != nil {
-		b.WriteString(appErrorStyle.Render(m.err.Error()) + "\n")
+		b.WriteString(appErrorStyle.Render(m.err.Error()))
+		b.WriteString("\n")
 	}
 
-	b.WriteString(appLabelStyle.Render("enter — submit | esc, ctrl+c — quit") + "\n")
+	b.WriteString(appLabelStyle.Render("enter — submit | esc, ctrl+c — quit"))
+	b.WriteString("\n")
 
 	return b.String()
 }

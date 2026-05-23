@@ -191,7 +191,8 @@ func (m chatModel) View() string {
 	}
 
 	for _, msg := range visible {
-		b.WriteString(msg + "\n")
+		b.WriteString(msg)
+		b.WriteString("\n")
 	}
 
 	msgs := b.String()
