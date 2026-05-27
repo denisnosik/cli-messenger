@@ -53,7 +53,7 @@ func deleteFriendshipRequest(t *testing.T, targetNickname, userToken string) *ht
 }
 
 func TestFriend(t *testing.T) {
-	// Test: Valid friend request (handlerFriends)
+	// Test: Valid send friend request (handlerFriends)
 	user := createAndLoginUser(t)
 	assert.NotNil(t, user.nickname)
 	assert.NotNil(t, user.token)
@@ -99,7 +99,24 @@ func TestFriend(t *testing.T) {
 	res.Body.Close()
 	// -------------------------------
 
-	// Test: Invalid user doesn't exist
+	// Test: Invalid delete friendship, user doesn't exist
+	res = loginUser(t, user.nickname, "000000")
+
+	require.Equal(t, http.StatusOK, res.StatusCode)
+
+	decoder = json.NewDecoder(res.Body)
+	err = decoder.Decode(&result)
+	require.NoError(t, err)
+	res.Body.Close()
+
+	targetNickname = uniqueNickname()
+
+	res = deleteFriendshipRequest(t, targetNickname, result.Token)
+	assert.Equal(t, http.StatusNotFound, res.StatusCode)
+	res.Body.Close()
+	// -------------------------------
+
+	// Test: Invalid send friend request, user doesn't exist
 	user = createAndLoginUser(t)
 	assert.NotNil(t, user.nickname)
 	assert.NotNil(t, user.token)
