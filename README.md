@@ -10,7 +10,7 @@ DEDA Chat is a self-hostable, open-source messaging system designed to be simple
 
 
 ## Motivation
-I built DEDA Chat to better understand how real-time messaging works under the hood, synchronization between clients, instant message delivery, and terminal-to-terminal communication. The result is a minimal, working foundation that others can fork and use to build their own messenger.
+I built DEDA Chat to better understand how real-time messaging works under the hood, synchronization between clients, instant message delivery, and terminal-to-terminal communication. The result is a minimal, working foundation that others can use to build their own messenger.
 
 ## Features
 
