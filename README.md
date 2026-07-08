@@ -1,5 +1,5 @@
 
-![ci badge](https://github.com/denisnosik/dedachat/actions/workflows/ci.yml/badge.svg) [![Go Report Card](https://goreportcard.com/badge/github.com/denisnosik/dedachat)](https://goreportcard.com/report/github.com/denisnosik/dedachat)
+![ci badge](https://github.com/denisnosik/dedachat/actions/workflows/ci.yml/badge.svg)
 
 # DEDA Chat
 An open-source real-time messaging system built in Go.
