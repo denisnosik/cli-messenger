@@ -96,10 +96,7 @@ func (m chatModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 
 		const reservedLines = 7
 
-		m.msgBoxHeight = msg.Height - reservedLines
-		if m.msgBoxHeight < 3 {
-			m.msgBoxHeight = 3
-		}
+		m.msgBoxHeight = max(msg.Height-reservedLines, 3)
 
 		return m, nil
 
@@ -165,21 +162,12 @@ func (m chatModel) View() string {
 	innerWidth := width - 8
 
 	const reservedLines = 7
-	msgBoxHeight := m.height - reservedLines
-	if msgBoxHeight < 3 {
-		msgBoxHeight = 3
-	}
+	msgBoxHeight := max(m.height-reservedLines, 3)
 
 	total := len(m.messages)
-	end := total - m.scrollOffset
-	if end < 0 {
-		end = 0
-	}
+	end := max(total-m.scrollOffset, 0)
 
-	start := end - msgBoxHeight
-	if start < 0 {
-		start = 0
-	}
+	start := max(end-msgBoxHeight, 0)
 
 	visible := m.messages[start:end]
 
