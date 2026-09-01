@@ -50,7 +50,7 @@ or via flag
 1. Clone and cd to the repository.
 ```bash
 > git clone https://github.com/denisnosik/dedachat
-> cd cli-messenger
+> cd dedachat
 ```
 
 2. Rename the .env.example file to .env and fill it in with your own values.
