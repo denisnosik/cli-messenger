@@ -1,7 +1,7 @@
 package server
 
 import (
-	"github.com/google/uuid"
+	"uuid"
 )
 
 type Hub struct {

@@ -6,10 +6,10 @@ import (
 	"log"
 	"net/http"
 	"time"
+	"uuid"
 
 	"github.com/denisnosik/dedachat/internal/auth"
 	"github.com/denisnosik/dedachat/internal/database"
-	"github.com/google/uuid"
 	"github.com/gorilla/websocket"
 )
 

@@ -2,9 +2,9 @@ package server
 
 import (
 	"net/http"
+	"uuid"
 
 	"github.com/denisnosik/dedachat/internal/database"
-	"github.com/google/uuid"
 )
 
 func (cfg *apiConfig) handlerMarkAsRead(w http.ResponseWriter, r *http.Request) {

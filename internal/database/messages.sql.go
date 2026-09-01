@@ -8,8 +8,7 @@ package database
 import (
 	"context"
 	"time"
-
-	"github.com/google/uuid"
+	"uuid"
 )
 
 const createMessage = `-- name: CreateMessage :one

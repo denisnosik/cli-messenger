@@ -6,7 +6,7 @@ import (
 	"fmt"
 	"net/http"
 
-	"github.com/google/uuid"
+	"uuid"
 )
 
 type chatRequest struct {
