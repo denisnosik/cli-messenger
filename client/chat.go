@@ -8,10 +8,10 @@ import (
 	"net/url"
 	"strings"
 	"time"
+	"uuid"
 
 	tea "github.com/charmbracelet/bubbletea"
 	"github.com/charmbracelet/lipgloss"
-	"github.com/google/uuid"
 	"github.com/gorilla/websocket"
 )
 

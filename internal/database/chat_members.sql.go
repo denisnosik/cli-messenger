@@ -7,8 +7,7 @@ package database
 
 import (
 	"context"
-
-	"github.com/google/uuid"
+	"uuid"
 )
 
 const createChatMember = `-- name: CreateChatMember :one

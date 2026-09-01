@@ -4,9 +4,9 @@ import (
 	"database/sql"
 	"encoding/json"
 	"net/http"
+	"uuid"
 
 	"github.com/denisnosik/dedachat/internal/database"
-	"github.com/google/uuid"
 )
 
 type Chat struct {

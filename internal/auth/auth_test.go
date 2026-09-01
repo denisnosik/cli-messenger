@@ -4,8 +4,8 @@ import (
 	"net/http"
 	"testing"
 	"time"
+	"uuid"
 
-	"github.com/google/uuid"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 )
@@ -30,7 +30,7 @@ func TestAuthPassword(t *testing.T) {
 
 func TestAuthJWT(t *testing.T) {
 	// Test: Valid JWT
-	id, _ := uuid.NewRandom()
+	id := uuid.NewV4()
 	jwt, err := MakeJWT(id, "secret", 10*time.Minute)
 	require.NoError(t, err)
 	require.NotNil(t, jwt)
@@ -40,7 +40,7 @@ func TestAuthJWT(t *testing.T) {
 	assert.Equal(t, id, idFromJWT)
 
 	// Test: Wrong JWT secret
-	id, _ = uuid.NewRandom()
+	id = uuid.NewV4()
 	jwt, err = MakeJWT(id, "secret", 10*time.Minute)
 	require.NoError(t, err)
 	require.NotNil(t, jwt)
@@ -49,7 +49,7 @@ func TestAuthJWT(t *testing.T) {
 	assert.NotEqual(t, id, idFromJWT)
 
 	// Test: JWT expired
-	id, _ = uuid.NewRandom()
+	id = uuid.NewV4()
 	jwt, err = MakeJWT(id, "secret", 1*time.Millisecond)
 	require.NoError(t, err)
 	require.NotNil(t, jwt)

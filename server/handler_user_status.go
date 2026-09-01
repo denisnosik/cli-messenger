@@ -2,8 +2,7 @@ package server
 
 import (
 	"net/http"
-
-	"github.com/google/uuid"
+	"uuid"
 )
 
 func (cfg *apiConfig) handlerSetOnline(w http.ResponseWriter, r *http.Request) {
