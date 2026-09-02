@@ -7,8 +7,8 @@ import (
 	"net/http"
 	"testing"
 	"time"
+	"uuid"
 
-	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 )
 
@@ -35,19 +35,15 @@ func createAndLoginUser(t *testing.T) testUser {
 	nickname := uniqueNickname()
 
 	// register
-	res := registerUser(t, nickname, "000000")
-	res.Body.Close()
-	require.Equal(t, http.StatusCreated, res.StatusCode)
+	doRequestExpect(t, registerUser(t, nickname, "000000"), http.StatusCreated)
 
 	// login
-	res = loginUser(t, nickname, "000000")
+	res := loginUser(t, nickname, "000000")
 	defer res.Body.Close()
 	require.Equal(t, http.StatusOK, res.StatusCode)
 
-	decoder := json.NewDecoder(res.Body)
 	var result User
-	err := decoder.Decode(&result)
-	require.NoError(t, err)
+	require.NoError(t, json.NewDecoder(res.Body).Decode(&result))
 
 	return testUser{
 		nickname: result.Nickname,
@@ -92,110 +88,71 @@ func loginUser(t *testing.T, nickname, password string) *http.Response {
 }
 
 func uniqueNickname() string {
-	return fmt.Sprintf("test_user_%d", time.Now().UnixNano())
+	return fmt.Sprintf("test_user_%d", uuid.New())
 }
 
 func TestUserRegister(t *testing.T) {
-	// Test: Valid register (handlerCreateUser)
-	nickname := uniqueNickname()
-	res := registerUser(t, nickname, "000000")
+	withLeakCheck(t)
 
-	assert.Equal(t, http.StatusCreated, res.StatusCode)
+	t.Run("register new user", func(t *testing.T) {
+		nickname := uniqueNickname()
 
-	decoder := json.NewDecoder(res.Body)
-	var resultRegister registerResponse
-	err := decoder.Decode(&resultRegister)
-	require.NoError(t, err)
+		res := registerUser(t, nickname, "000000")
+		defer res.Body.Close()
+		require.Equal(t, http.StatusCreated, res.StatusCode)
 
-	assert.Equal(t, nickname, resultRegister.Nickname)
-	res.Body.Close()
-	// -----------------------------------------
+		var result registerResponse
+		require.NoError(t, json.NewDecoder(res.Body).Decode(&result))
+		require.Equal(t, nickname, result.Nickname)
+	})
 
-	// Test: Invalid register (no nickname)
-	res = registerUser(t, "", "000000")
+	t.Run("register new user missing nickname", func(t *testing.T) {
+		doRequestExpect(t, registerUser(t, "", "000000"), http.StatusBadRequest)
+	})
 
-	assert.Equal(t, http.StatusBadRequest, res.StatusCode)
+	t.Run("register new user missing password", func(t *testing.T) {
+		doRequestExpect(t, registerUser(t, uniqueNickname(), ""), http.StatusBadRequest)
+	})
 
-	decoder = json.NewDecoder(res.Body)
-	var errRes errorResponse
-	err = decoder.Decode(&errRes)
-	require.NoError(t, err)
+	t.Run("register new user bad request no nickname and no password", func(t *testing.T) {
+		doRequestExpect(t, registerUser(t, "", ""), http.StatusBadRequest)
+	})
 
-	assert.NotNil(t, errRes.Error)
-	res.Body.Close()
-	// -----------------------------------------
+	t.Run("register new user status conflict", func(t *testing.T) {
+		nickname := uniqueNickname()
 
-	// Test: Invalid register (no password)
-	nickname = uniqueNickname()
-	res = registerUser(t, nickname, "")
-
-	assert.Equal(t, http.StatusBadRequest, res.StatusCode)
-
-	decoder = json.NewDecoder(res.Body)
-	err = decoder.Decode(&errRes)
-	require.NoError(t, err)
-
-	assert.NotNil(t, errRes.Error)
-	res.Body.Close()
-	// -----------------------------------------
-
-	// Test: Invalid register (user already exist)
-	nickname = uniqueNickname()
-	res = registerUser(t, nickname, "000000")
-	res.Body.Close()
-
-	res = registerUser(t, nickname, "000000")
-
-	assert.Equal(t, http.StatusConflict, res.StatusCode)
-
-	decoder = json.NewDecoder(res.Body)
-	err = decoder.Decode(&errRes)
-	require.NoError(t, err)
-
-	assert.NotNil(t, errRes.Error)
-	res.Body.Close()
-	// -----------------------------------------
+		doRequestExpect(t, registerUser(t, nickname, "000000"), http.StatusCreated)
+		doRequestExpect(t, registerUser(t, nickname, "000000"), http.StatusConflict)
+	})
 }
+
 func TestUserLogin(t *testing.T) {
-	// Test: Valid login user (handlerLoginUser)
-	user := createAndLoginUser(t)
+	withLeakCheck(t)
 
-	assert.NotNil(t, user.nickname)
-	assert.NotNil(t, user.token)
-	// -----------------------------------------
+	t.Run("login user", func(t *testing.T) {
+		user := createAndLoginUser(t)
 
-	// Test: Invalid login user (user doesn't exist)
-	nickname := uniqueNickname()
-	res := loginUser(t, nickname, "000000")
+		require.NotEmpty(t, user.nickname)
+		require.NotEmpty(t, user.token)
+	})
 
-	assert.Equal(t, http.StatusUnauthorized, res.StatusCode)
+	t.Run("login user status unauthorized user doesn't exist", func(t *testing.T) {
+		doRequestExpectError(t, loginUser(t, uniqueNickname(), "000000"), http.StatusUnauthorized)
+	})
 
-	decoder := json.NewDecoder(res.Body)
-	var errRes errorResponse
-	err := decoder.Decode(&errRes)
-	require.NoError(t, err)
+	t.Run("login user wrong password", func(t *testing.T) {
+		nickname := uniqueNickname()
 
-	assert.NotNil(t, errRes.Error)
+		doRequestExpect(t, registerUser(t, nickname, "000000"), http.StatusCreated)
 
-	res.Body.Close()
-	// -----------------------------------------
+		doRequestExpectError(t, loginUser(t, nickname, "wrong-password"), http.StatusUnauthorized)
+	})
 
-	// Test: Invalid login user (wrong password)
-	nickname = uniqueNickname()
-	res = registerUser(t, nickname, "000000")
-	res.Body.Close()
-	require.Equal(t, http.StatusCreated, res.StatusCode)
+	t.Run("login user missing password", func(t *testing.T) {
+		doRequestExpectError(t, loginUser(t, uniqueNickname(), ""), http.StatusBadRequest)
+	})
 
-	res = loginUser(t, nickname, "wrong-password")
-
-	assert.Equal(t, http.StatusUnauthorized, res.StatusCode)
-
-	decoder = json.NewDecoder(res.Body)
-	err = decoder.Decode(&errRes)
-	require.NoError(t, err)
-
-	assert.NotNil(t, errRes.Error)
-
-	res.Body.Close()
-	// -----------------------------------------
+	t.Run("login user missing nickname", func(t *testing.T) {
+		doRequestExpectError(t, loginUser(t, "", "000000"), http.StatusBadRequest)
+	})
 }

@@ -6,7 +6,6 @@ import (
 	"net/http"
 	"testing"
 
-	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 )
 
@@ -52,87 +51,64 @@ func deleteFriendshipRequest(t *testing.T, targetNickname, userToken string) *ht
 	return res
 }
 
-func TestFriend(t *testing.T) {
-	// Test: Valid send friend request (handlerFriends)
-	user := createAndLoginUser(t)
-	assert.NotNil(t, user.nickname)
-	assert.NotNil(t, user.token)
+func doRequestExpect(t *testing.T, res *http.Response, wantStatus int) {
+	t.Helper()
+	defer res.Body.Close()
+	require.Equal(t, wantStatus, res.StatusCode)
+}
 
-	targetNickname := uniqueNickname()
-	res := registerUser(t, targetNickname, "000000")
-	assert.Equal(t, http.StatusCreated, res.StatusCode)
-	res.Body.Close()
+func doRequestExpectError(t *testing.T, res *http.Response, wantStatus int) errorResponse {
+	t.Helper()
+	defer res.Body.Close()
+	require.Equal(t, wantStatus, res.StatusCode)
 
-	res = sendFriendRequest(t, targetNickname, user.token)
-	assert.Equal(t, http.StatusCreated, res.StatusCode)
-	res.Body.Close()
-	// -------------------------------
-
-	// Test: Valid accept friend request
-	res = loginUser(t, targetNickname, "000000")
-
-	require.Equal(t, http.StatusOK, res.StatusCode)
-
-	decoder := json.NewDecoder(res.Body)
-	var result User
-	err := decoder.Decode(&result)
-	require.NoError(t, err)
-	res.Body.Close()
-
-	res = sendFriendRequest(t, user.nickname, result.Token)
-	assert.Equal(t, http.StatusOK, res.StatusCode)
-	res.Body.Close()
-	// -------------------------------
-
-	// Test: Valid delete friendship (handlerDeleteFriend)
-	res = loginUser(t, user.nickname, "000000")
-
-	require.Equal(t, http.StatusOK, res.StatusCode)
-
-	decoder = json.NewDecoder(res.Body)
-	err = decoder.Decode(&result)
-	require.NoError(t, err)
-	res.Body.Close()
-
-	res = deleteFriendshipRequest(t, targetNickname, result.Token)
-	assert.Equal(t, http.StatusNoContent, res.StatusCode)
-	res.Body.Close()
-	// -------------------------------
-
-	// Test: Invalid delete friendship, user doesn't exist
-	res = loginUser(t, user.nickname, "000000")
-
-	require.Equal(t, http.StatusOK, res.StatusCode)
-
-	decoder = json.NewDecoder(res.Body)
-	err = decoder.Decode(&result)
-	require.NoError(t, err)
-	res.Body.Close()
-
-	targetNickname = uniqueNickname()
-
-	res = deleteFriendshipRequest(t, targetNickname, result.Token)
-	assert.Equal(t, http.StatusNotFound, res.StatusCode)
-	res.Body.Close()
-	// -------------------------------
-
-	// Test: Invalid send friend request, user doesn't exist
-	user = createAndLoginUser(t)
-	assert.NotNil(t, user.nickname)
-	assert.NotNil(t, user.token)
-
-	targetNickname = uniqueNickname()
-
-	res = sendFriendRequest(t, targetNickname, user.token)
-	assert.Equal(t, http.StatusNotFound, res.StatusCode)
-
-	decoder = json.NewDecoder(res.Body)
 	var errRes errorResponse
-	err = decoder.Decode(&errRes)
-	require.NoError(t, err)
+	require.NoError(t, json.NewDecoder(res.Body).Decode(&errRes))
+	require.NotEmpty(t, errRes.Error)
+	return errRes
+}
 
-	assert.NotNil(t, errRes.Error)
+func TestFriend(t *testing.T) {
+	withLeakCheck(t)
 
-	res.Body.Close()
-	// -------------------------------
+	t.Run("send friend request", func(t *testing.T) {
+		user := createAndLoginUser(t)
+		require.NotEmpty(t, user.nickname)
+		require.NotEmpty(t, user.token)
+
+		target := uniqueNickname()
+
+		doRequestExpect(t, registerUser(t, target, "000000"), http.StatusCreated)
+		doRequestExpect(t, sendFriendRequest(t, target, user.token), http.StatusCreated)
+	})
+
+	t.Run("accept friend request", func(t *testing.T) {
+		user := createAndLoginUser(t)
+		target := createAndLoginUser(t)
+
+		doRequestExpect(t, sendFriendRequest(t, target.nickname, user.token), http.StatusCreated)
+		doRequestExpect(t, sendFriendRequest(t, user.nickname, target.token), http.StatusOK)
+	})
+
+	t.Run("delete friendship", func(t *testing.T) {
+		user := createAndLoginUser(t)
+		target := createAndLoginUser(t)
+
+		doRequestExpect(t, sendFriendRequest(t, target.nickname, user.token), http.StatusCreated)
+		doRequestExpect(t, sendFriendRequest(t, user.nickname, target.token), http.StatusOK)
+
+		doRequestExpect(t, deleteFriendshipRequest(t, target.nickname, user.token), http.StatusNoContent)
+	})
+
+	t.Run("delete friendship user not found", func(t *testing.T) {
+		user := createAndLoginUser(t)
+
+		doRequestExpect(t, deleteFriendshipRequest(t, uniqueNickname(), user.token), http.StatusNotFound)
+	})
+
+	t.Run("send friend request user not found", func(t *testing.T) {
+		user := createAndLoginUser(t)
+
+		doRequestExpectError(t, sendFriendRequest(t, uniqueNickname(), user.token), http.StatusNotFound)
+	})
 }
