@@ -6,78 +6,86 @@ import (
 	"time"
 	"uuid"
 
-	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 )
 
-func TestAuthPassword(t *testing.T) {
-	// Test: Valid password
-	hashPwd, err := HashPassword("HelloWorld123")
-	require.NoError(t, err)
-	require.NotNil(t, hashPwd)
-	match, err := CheckPasswordHash("HelloWorld123", hashPwd)
-	require.NoError(t, err)
-	require.True(t, match)
+func TestHashPassword(t *testing.T) {
+	t.Run("hash password valid password", func(t *testing.T) {
+		hashPwd, err := HashPassword("000000")
+		require.NoError(t, err)
+		require.NotEmpty(t, hashPwd)
 
-	// Test: Wrong password no errors
-	hashPwd, err = HashPassword("HelloWorld123")
-	require.NoError(t, err)
-	require.NotNil(t, hashPwd)
-	match, err = CheckPasswordHash("helloworld321", hashPwd)
-	require.NoError(t, err)
-	require.False(t, match)
+		match, err := CheckPasswordHash("000000", hashPwd)
+		require.NoError(t, err)
+		require.True(t, match)
+	})
+
+	t.Run("auth wrong password but no errors", func(t *testing.T) {
+		hashPwd, err := HashPassword("000000")
+		require.NoError(t, err)
+		require.NotEmpty(t, hashPwd)
+
+		match, err := CheckPasswordHash("111111", hashPwd)
+		require.NoError(t, err)
+		require.False(t, match)
+	})
 }
 
 func TestAuthJWT(t *testing.T) {
-	// Test: Valid JWT
-	id := uuid.NewV4()
-	jwt, err := MakeJWT(id, "secret", 10*time.Minute)
-	require.NoError(t, err)
-	require.NotNil(t, jwt)
-	idFromJWT, err := ValidateJWT(jwt, "secret")
-	require.NoError(t, err)
-	require.NotNil(t, idFromJWT)
-	assert.Equal(t, id, idFromJWT)
+	t.Run("auth valid jwt", func(t *testing.T) {
+		id := uuid.NewV4()
+		jwt, err := MakeJWT(id, "secret", 10*time.Minute)
+		require.NoError(t, err)
+		require.NotEmpty(t, jwt)
 
-	// Test: Wrong JWT secret
-	id = uuid.NewV4()
-	jwt, err = MakeJWT(id, "secret", 10*time.Minute)
-	require.NoError(t, err)
-	require.NotNil(t, jwt)
-	idFromJWT, err = ValidateJWT(jwt, "wrong_secret")
-	require.Error(t, err)
-	assert.NotEqual(t, id, idFromJWT)
+		idFromJWT, err := ValidateJWT(jwt, "secret")
+		require.NoError(t, err)
+		require.Equal(t, id, idFromJWT)
+	})
 
-	// Test: JWT expired
-	id = uuid.NewV4()
-	jwt, err = MakeJWT(id, "secret", 1*time.Millisecond)
-	require.NoError(t, err)
-	require.NotNil(t, jwt)
-	time.Sleep(5 * time.Millisecond)
-	idFromJWT, err = ValidateJWT(jwt, "secret")
-	require.Error(t, err)
-	assert.NotEqual(t, id, idFromJWT)
+	t.Run("auth wrong jwt secret", func(t *testing.T) {
+		id := uuid.NewV4()
+		jwt, err := MakeJWT(id, "secret", 10*time.Minute)
+		require.NoError(t, err)
+
+		_, err = ValidateJWT(jwt, "wrong_secret")
+		require.Error(t, err)
+	})
+
+	t.Run("auth jwt expired", func(t *testing.T) {
+		id := uuid.NewV4()
+		jwt, err := MakeJWT(id, "secret", 1*time.Millisecond)
+		require.NoError(t, err)
+
+		time.Sleep(50 * time.Millisecond)
+
+		_, err = ValidateJWT(jwt, "secret")
+		require.Error(t, err)
+	})
 }
 
-func TestGetBearerToken(t *testing.T) {
-	// Test: Valid bearer token
-	headers := http.Header{}
-	headers.Set("Authorization", "Bearer cool.jwt.token")
-	token, err := GetBearerToken(headers)
-	require.NoError(t, err)
-	require.NotNil(t, token)
-	assert.Equal(t, token, "cool.jwt.token")
+func TestBearerToken(t *testing.T) {
+	t.Run("bearer token valid", func(t *testing.T) {
+		headers := http.Header{}
+		headers.Set("Authorization", "Bearer cool.jwt.token")
 
-	// Test: Empty headers
-	headers = http.Header{}
-	token, err = GetBearerToken(headers)
-	require.Error(t, err)
-	assert.Equal(t, token, "")
+		token, err := GetBearerToken(headers)
+		require.NoError(t, err)
+		require.Equal(t, "cool.jwt.token", token)
+	})
 
-	// Test: Empty token
-	headers = http.Header{}
-	headers.Set("Authorization", "Bearer ")
-	token, err = GetBearerToken(headers)
-	require.Error(t, err)
-	assert.Equal(t, token, "")
+	t.Run("bearer token empty headers", func(t *testing.T) {
+		headers := http.Header{}
+		token, err := GetBearerToken(headers)
+		require.Error(t, err)
+		require.Equal(t, "", token)
+	})
+
+	t.Run("bearer token empty token", func(t *testing.T) {
+		headers := http.Header{}
+		headers.Set("Authorization", "Bearer ")
+		token, err := GetBearerToken(headers)
+		require.Error(t, err)
+		require.Equal(t, "", token)
+	})
 }
