@@ -23,6 +23,12 @@ jobs:
       
       - name: Run gosec
         run: gosec ./...
+        
+      - name: Install govulncheck
+        run: go install golang.org/x/vuln/cmd/govulncheck@v1.7.0
+
+      - name: Run govulncheck
+        run: govulncheck ./...
       
       - name: Run docker compose
         run: docker compose -f docker-compose.ci.yml up --build -d
