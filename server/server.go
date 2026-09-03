@@ -14,6 +14,7 @@ import (
 
 type apiConfig struct {
 	db     *database.Queries
+	dbConn *sql.DB
 	secret string
 	hub    *Hub
 }
@@ -37,11 +38,14 @@ func Run() {
 
 	apiCfg := apiConfig{
 		db:     dbQueries,
+		dbConn: dbConn,
 		secret: secret,
 		hub:    hub,
 	}
 
 	mux := http.NewServeMux()
+
+	mux.HandleFunc("GET /api/health", apiCfg.handlerHealthCheck)
 
 	mux.HandleFunc("POST /api/register", apiCfg.handlerCreateUser)
 	mux.HandleFunc("POST /api/login", apiCfg.handlerLoginUser)
