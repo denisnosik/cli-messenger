@@ -93,10 +93,10 @@ func (m clientModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		}
 
 		next := appModel{
-			cfg: auth.cfg,
+			cfg:    auth.cfg,
+			output: fmt.Sprintf("registered as %s, now login", msg.nickname),
 		}
 
-		next.output = fmt.Sprintf("registered as %s, now login", msg.nickname)
 		m.current = next
 		return m, next.Init()
 
