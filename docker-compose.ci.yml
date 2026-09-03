@@ -9,9 +9,20 @@ services:
       - "5432:5432"
     volumes:
       - pgdata:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U postgres -d messenger"]
+      interval: 2s
+      timeout: 2s
+      retries: 15
 
   server:
     build: .
+    healthcheck:
+      test: ["CMD", "wget", "-qO-", "http://localhost:8080/api/health"]
+      interval: 2s
+      timeout: 2s
+      retries: 15
+      start_period: 5s
     environment:
       - DB_URL=postgres://postgres:postgres@db:5432/messenger?sslmode=disable
       - SECRET=test-secret
@@ -21,7 +32,8 @@ services:
     ports:
       - "8080:8080"
     depends_on:
-      - db
+      db:
+        condition: service_healthy
 
 volumes:
   pgdata:

@@ -1,5 +1,8 @@
 name: CI
 
+permissions:
+  contents: read
+
 on:
   pull_request:
     branches: [main]
@@ -8,6 +11,7 @@ jobs:
   tests:
     name: Tests
     runs-on: ubuntu-latest
+    timeout-minutes: 15
 
     steps:
       - name: Check out code
@@ -19,7 +23,7 @@ jobs:
           go-version: "1.27"
       
       - name: Install gosec
-        run: go install github.com/securego/gosec/v2/cmd/gosec@latest
+        run: go install github.com/securego/gosec/v2/cmd/gosec@v2.29.0
       
       - name: Run gosec
         run: gosec ./...
@@ -32,13 +36,26 @@ jobs:
       
       - name: Run docker compose
         run: docker compose -f docker-compose.ci.yml up --build -d
+      - name: Wait for server to be healthy
+        run: |
+          CONTAINER_ID=$(docker compose -f docker-compose.ci.yml ps -q server)
+          timeout 60 sh -c "until [ \"\$(docker inspect -f '{{.State.Health.Status}}' $CONTAINER_ID)\" = 'healthy' ]; do sleep 2; done"
       
       - name: Run tests
         run: go test -cover ./...
+      
+      - name: Dump server logs on failure
+        if: failure()
+        run: docker compose -f docker-compose.ci.yml logs server
+      
+      - name: Tear down
+        if: always()
+        run: docker compose -f docker-compose.ci.yml down -v
   
   style:
     name: Style
     runs-on: ubuntu-latest
+    timeout-minutes: 10
 
     steps:
       - name: Check out code
@@ -50,10 +67,10 @@ jobs:
           go-version: "1.27"
 
       - name: Check formatting issues
-        run: test -z $(go fmt ./...)
+        run: test -z "$(gofmt -l .)"
       
       - name: Install staticcheck
-        run: go install honnef.co/go/tools/cmd/staticcheck@latest
+        run: go install honnef.co/go/tools/cmd/staticcheck@2026.2
       
       - name: Run staticcheck
         run: staticcheck ./...
