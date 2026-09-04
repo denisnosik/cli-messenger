@@ -25,6 +25,7 @@ I built DEDA Chat to better understand how real-time messaging works under the h
 - Notifications — unread message counts and pending friend requests
 - Online/offline status tracking
 - Chat history
+- Health check endpoint for container orchestration readiness
 
 
 ## Try It Now
@@ -43,7 +44,7 @@ or via flag
 ## Requirements
 
 - [Docker](https://www.docker.com/) 
-- [Go 1.25+](https://golang.org/)
+- [Go 1.27+](https://golang.org/)
 
 ## Quick Start
 
@@ -66,7 +67,7 @@ GOOSE_MIGRATION_DIR=sql/schema
 
 3. Start the server and database using Docker Compose in detached mode:
 ```bash
-> docker-compose up --build -d
+> docker compose up --build -d
 ```
 
 4. Run the client:
@@ -149,6 +150,11 @@ Contributions are always welcome!
 If you have suggestions, ideas, or find any issues, feel free to open an issue or submit a pull request.
 
 ## API
+
+### Health
+```
+GET  /api/health                - check server and database health
+```
 
 ### Authentication
 ```
