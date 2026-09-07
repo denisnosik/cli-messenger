@@ -30,7 +30,7 @@ func (cfg *apiConfig) handlerCreateUser(w http.ResponseWriter, r *http.Request) 
 	decoder := json.NewDecoder(r.Body)
 	params := parameters{}
 	if err := decoder.Decode(&params); err != nil {
-		respondWithError(w, http.StatusInternalServerError, "Couldn't decode.", nil)
+		respondWithError(w, http.StatusBadRequest, "Couldn't decode.", nil)
 		return
 	}
 
@@ -78,7 +78,7 @@ func (cfg *apiConfig) handlerLoginUser(w http.ResponseWriter, r *http.Request) {
 	decoder := json.NewDecoder(r.Body)
 	params := parameters{}
 	if err := decoder.Decode(&params); err != nil {
-		respondWithError(w, http.StatusInternalServerError, "Couldn't decode", nil)
+		respondWithError(w, http.StatusBadRequest, "Couldn't decode", nil)
 		return
 	}
 

@@ -23,7 +23,7 @@ func (cfg *apiConfig) handlerChat(w http.ResponseWriter, r *http.Request) {
 	decoder := json.NewDecoder(r.Body)
 	params := parameters{}
 	if err := decoder.Decode(&params); err != nil {
-		respondWithError(w, http.StatusInternalServerError, "Couldn't decode", err)
+		respondWithError(w, http.StatusBadRequest, "Couldn't decode", err)
 		return
 	}
 

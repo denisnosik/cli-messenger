@@ -79,4 +79,18 @@ func TestChat(t *testing.T) {
 
 		doRequestExpectError(t, createChatRequest(t, friend.nickname, user.token), http.StatusBadRequest)
 	})
+
+	t.Run("create chat malformed body", func(t *testing.T) {
+		user := createAndLoginUser(t)
+
+		req, err := http.NewRequest("POST", baseURL+"/api/chats", bytes.NewBufferString("{invalid json"))
+		require.NoError(t, err)
+		req.Header.Set("Authorization", "Bearer "+user.token)
+
+		res, err := testClient.Do(req)
+		require.NoError(t, err)
+		defer res.Body.Close()
+
+		require.Equal(t, http.StatusBadRequest, res.StatusCode)
+	})
 }
