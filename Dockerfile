@@ -4,7 +4,7 @@ COPY go.mod go.sum ./
 RUN go mod download
 COPY . .
 RUN go build -o server ./cmd/server
-RUN go install github.com/pressly/goose/v3/cmd/goose@3.28.0
+RUN go install github.com/pressly/goose/v3/cmd/goose@v3.28.0
 
 FROM alpine:latest
 WORKDIR /app
