@@ -124,6 +124,17 @@ func TestUserRegister(t *testing.T) {
 		doRequestExpect(t, registerUser(t, nickname, "000000"), http.StatusCreated)
 		doRequestExpect(t, registerUser(t, nickname, "000000"), http.StatusConflict)
 	})
+
+	t.Run("register new user malformed body", func(t *testing.T) {
+		req, err := http.NewRequest("POST", baseURL+"/api/register", bytes.NewBufferString("{invalid json"))
+		require.NoError(t, err)
+
+		res, err := testClient.Do(req)
+		require.NoError(t, err)
+		defer res.Body.Close()
+
+		require.Equal(t, http.StatusBadRequest, res.StatusCode)
+	})
 }
 
 func TestUserLogin(t *testing.T) {
@@ -154,5 +165,16 @@ func TestUserLogin(t *testing.T) {
 
 	t.Run("login user missing nickname", func(t *testing.T) {
 		doRequestExpectError(t, loginUser(t, "", "000000"), http.StatusBadRequest)
+	})
+
+	t.Run("login user malformed body", func(t *testing.T) {
+		req, err := http.NewRequest("POST", baseURL+"/api/login", bytes.NewBufferString("{invalid json"))
+		require.NoError(t, err)
+
+		res, err := testClient.Do(req)
+		require.NoError(t, err)
+		defer res.Body.Close()
+
+		require.Equal(t, http.StatusBadRequest, res.StatusCode)
 	})
 }

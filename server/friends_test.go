@@ -111,4 +111,32 @@ func TestFriend(t *testing.T) {
 
 		doRequestExpectError(t, sendFriendRequest(t, uniqueNickname(), user.token), http.StatusNotFound)
 	})
+
+	t.Run("send friend request malformed body", func(t *testing.T) {
+		user := createAndLoginUser(t)
+
+		req, err := http.NewRequest("POST", baseURL+"/api/friends", bytes.NewBufferString("{invalid json"))
+		require.NoError(t, err)
+		req.Header.Set("Authorization", "Bearer "+user.token)
+
+		res, err := testClient.Do(req)
+		require.NoError(t, err)
+		defer res.Body.Close()
+
+		require.Equal(t, http.StatusBadRequest, res.StatusCode)
+	})
+
+	t.Run("delete friendship malformed body", func(t *testing.T) {
+		user := createAndLoginUser(t)
+
+		req, err := http.NewRequest("DELETE", baseURL+"/api/friends", bytes.NewBufferString("{invalid json"))
+		require.NoError(t, err)
+		req.Header.Set("Authorization", "Bearer "+user.token)
+
+		res, err := testClient.Do(req)
+		require.NoError(t, err)
+		defer res.Body.Close()
+
+		require.Equal(t, http.StatusBadRequest, res.StatusCode)
+	})
 }
