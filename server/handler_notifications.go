@@ -6,8 +6,8 @@ import (
 )
 
 type unreadMessages struct {
-	Nickname string `json:"Nickname"`
-	Count    int64  `json:"Count"`
+	Nickname string `json:"nickname"`
+	Count    int64  `json:"count"`
 }
 
 type friendRequest struct {
@@ -35,7 +35,7 @@ func (cfg *apiConfig) handlerNotifications(w http.ResponseWriter, r *http.Reques
 		return
 	}
 
-	var unreadMsgs []unreadMessages
+	unreadMsgs := make([]unreadMessages, 0, len(dbUnreadMessages))
 	for _, msg := range dbUnreadMessages {
 		unreadMsgs = append(unreadMsgs, unreadMessages{
 			Nickname: msg.Nickname,
@@ -43,7 +43,7 @@ func (cfg *apiConfig) handlerNotifications(w http.ResponseWriter, r *http.Reques
 		})
 	}
 
-	var friendReqs []friendRequest
+	friendReqs := make([]friendRequest, 0, len(dbFriendRequest))
 	for _, f := range dbFriendRequest {
 		friendReqs = append(friendReqs, friendRequest{
 			SenderNickname:   f.SenderNickname,

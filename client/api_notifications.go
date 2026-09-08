@@ -12,8 +12,8 @@ type notificationsResponse struct {
 }
 
 type unreadMessages struct {
-	Nickname string `json:"Nickname"`
-	Count    int64  `json:"Count"`
+	Nickname string `json:"nickname"`
+	Count    int64  `json:"count"`
 }
 
 type friendRequest struct {

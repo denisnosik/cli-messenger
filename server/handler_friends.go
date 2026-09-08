@@ -3,6 +3,9 @@ package server
 import (
 	"database/sql"
 	"encoding/json"
+	"errors"
+	"fmt"
+	"log"
 	"net/http"
 	"uuid"
 
@@ -94,6 +97,10 @@ func (cfg *apiConfig) handlerFriends(w http.ResponseWriter, r *http.Request) {
 	case "accepted":
 		respondWithJSON(w, http.StatusOK, FriendshipStatus{Status: "friends"})
 		return
+
+	default:
+		respondWithError(w, http.StatusInternalServerError, "Unexpected friendship status", fmt.Errorf("unknown status: %s", friendshipStatus.RequestStatus))
+		return
 	}
 }
 
@@ -181,10 +188,11 @@ func (cfg *apiConfig) handlerDeleteFriend(w http.ResponseWriter, r *http.Request
 		UserID:   currentUserID,
 		UserID_2: targetUser.ID,
 	})
-	if err == nil {
-		err = cfg.db.DeleteChat(r.Context(), chatID)
-		if err != nil {
-			respondWithError(w, http.StatusInternalServerError, "Couldn't delete chat", nil)
+	if err != nil && !errors.Is(err, sql.ErrNoRows) {
+		log.Printf("error checking for existing chat: %v", err)
+	} else if err == nil {
+		if err := cfg.db.DeleteChat(r.Context(), chatID); err != nil {
+			respondWithError(w, http.StatusInternalServerError, "Couldn't delete chat", err)
 			return
 		}
 	}
